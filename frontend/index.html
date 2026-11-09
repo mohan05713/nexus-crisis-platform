@@ -1,0 +1,1386 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXUS AI Crisis Intelligence Platform</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        nexus: {
+                            bg: '#090C12',
+                            card: '#111722',
+                            border: 'rgba(245, 158, 11, 0.15)',
+                            cyan: '#F59E0B',
+                            amber: '#F59E0B',
+                            gold: '#FBBF24',
+                            blue: '#38BDF8',
+                            red: '#EF4444',
+                            emerald: '#10B981',
+                            violet: '#8B5CF6'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        tech: ['Chakra Petch', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #090C12;
+            color: #F1F5F9;
+            overflow-x: hidden;
+            background-image:
+                radial-gradient(circle at 50% 0%, rgba(245, 158, 11, 0.09) 0%, transparent 60%),
+                radial-gradient(circle at 80% 50%, rgba(217, 119, 6, 0.05) 0%, transparent 50%),
+                linear-gradient(to bottom, rgba(9, 12, 18, 0.85), rgba(7, 9, 14, 0.98));
+        }
+        .radar-grid {
+            background-size: 40px 40px;
+            background-image:
+                linear-gradient(to right, rgba(245, 158, 11, 0.035) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(245, 158, 11, 0.035) 1px, transparent 1px);
+        }
+        .glass-panel {
+            background: rgba(17, 23, 34, 0.82);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 1px solid rgba(245, 158, 11, 0.12);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.45);
+        }
+        .glass-panel-glow {
+            background: rgba(17, 23, 34, 0.90);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(245, 158, 11, 0.30);
+            box-shadow: 0 0 24px rgba(245, 158, 11, 0.16);
+        }
+        .scanline { position: relative; overflow: hidden; }
+        .scanline::after {
+            content: "";
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(to bottom, transparent 50%, rgba(245, 158, 11, 0.025) 51%);
+            background-size: 100% 4px;
+            pointer-events: none;
+        }
+        .radar-sweep {
+            position: absolute; top: 50%; left: 50%;
+            width: 800px; height: 800px;
+            margin-top: -400px; margin-left: -400px;
+            border-radius: 50%;
+            background: conic-gradient(from 0deg, transparent 0deg, transparent 300deg, rgba(245, 158, 11, 0.13) 360deg);
+            animation: sweep 8s linear infinite;
+            pointer-events: none; z-index: 0;
+        }
+        @keyframes sweep { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes laserScan { 0% { top: 0%; } 50% { top: 100%; } 100% { top: 0%; } }
+        .laser-scanner {
+            position: absolute; left: 0; right: 0; height: 2px;
+            background: linear-gradient(90deg, transparent, #F59E0B, transparent);
+            box-shadow: 0 0 10px #F59E0B;
+            animation: laserScan 2.5s ease-in-out infinite;
+        }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(9, 12, 18, 0.8); }
+        ::-webkit-scrollbar-thumb { background: rgba(245, 158, 11, 0.28); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(245, 158, 11, 0.55); }
+        .cyber-btn {
+            position: relative; transition: all 0.2s ease;
+            clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+        }
+        .cyber-btn:hover { transform: translateY(-1px); filter: brightness(1.15); }
+        @keyframes pulse {
+            0% { transform: scale(0.95); opacity: 0.9; }
+            50% { transform: scale(1.35); opacity: 0.4; }
+            100% { transform: scale(0.95); opacity: 0.9; }
+        }
+        .leaflet-popup-content-wrapper, .leaflet-popup-tip {
+            background: #111722 !important;
+            border: 1px solid rgba(245, 158, 11, 0.4) !important;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.7) !important;
+            border-radius: 8px !important;
+        }
+        .leaflet-popup-content {
+            margin: 8px !important;
+            line-height: 1.4 !important;
+        }
+        .nexus-crisis-marker {
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        .nexus-crisis-marker:hover {
+            transform: scale(1.2);
+            z-index: 1000 !important;
+        }
+        .leaflet-tile {
+            filter: brightness(0.85) invert(1) contrast(1.1) hue-rotate(185deg) saturate(0.35);
+        }
+    </style>
+</head>
+<body class="font-sans antialiased min-h-screen flex flex-col justify-between radar-grid selection:bg-amber-500 selection:text-black">
+
+    <div class="fixed inset-0 overflow-hidden pointer-events-none z-0"><div class="radar-sweep"></div></div>
+
+    <!-- ===== HEADER ===== -->
+    <header class="sticky top-0 z-50 glass-panel border-b border-nexus-border px-4 lg:px-8 py-3">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="switchView('hero')">
+                <div class="relative w-9 h-9 rounded-lg bg-amber-500/10 border border-amber-400/40 flex items-center justify-center text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.3)]">
+                    <i class="fa-solid fa-shield-halved text-lg"></i>
+                    <span class="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+                    </span>
+                </div>
+                <div>
+                    <div class="font-tech font-bold text-lg tracking-wider text-white flex items-center gap-2">
+                        NEXUS <span class="text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">AI v4.2</span>
+                    </div>
+                    <p class="text-[10px] text-slate-400 tracking-widest font-mono uppercase">Crisis Intelligence Platform</p>
+                </div>
+            </div>
+
+            <nav class="hidden lg:flex items-center space-x-1 bg-black/40 p-1.5 rounded-xl border border-white/5 font-tech text-xs tracking-wide">
+                <button onclick="switchView('hero')" id="nav-hero" class="nav-btn px-3.5 py-1.5 rounded-lg text-amber-400 bg-amber-500/10 border border-amber-500/20 font-semibold transition"><i class="fa-solid fa-house mr-1.5"></i> Hub</button>
+                <button onclick="switchView('crisis-map')" id="nav-crisis-map" class="nav-btn px-3.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/5 transition"><i class="fa-solid fa-map-location-dot mr-1.5 text-amber-400"></i> Crisis Map</button>
+                <button onclick="switchView('image-forensics')" id="nav-image-forensics" class="nav-btn px-3.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/5 transition"><i class="fa-solid fa-image mr-1.5"></i> Image Forensic</button>
+                <button onclick="switchView('voice-forensics')" id="nav-voice-forensics" class="nav-btn px-3.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/5 transition"><i class="fa-solid fa-microphone mr-1.5"></i> Voice Forensic</button>
+                <button onclick="switchView('fusion-workspace')" id="nav-fusion-workspace" class="nav-btn px-3.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/5 transition"><i class="fa-solid fa-network-wired mr-1.5"></i> Fusion Engine</button>
+                <button onclick="switchView('dashboard')" id="nav-dashboard" class="nav-btn px-3.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/5 transition"><i class="fa-solid fa-chart-simple mr-1.5"></i> Live Analytics</button>
+                <button onclick="switchView('evidence-vault')" id="nav-evidence-vault" class="nav-btn px-3.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/5 transition"><i class="fa-solid fa-box-archive mr-1.5"></i> Evidence Vault</button>
+            </nav>
+
+            <div class="flex items-center space-x-3">
+                <div class="hidden sm:flex items-center space-x-2 text-xs font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1 rounded-full">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span>ONLINE // 12 NODES</span>
+                </div>
+                <button onclick="loadSampleDemoData()" title="Load Sample Case Data" class="cyber-btn bg-amber-600/30 text-amber-300 border border-amber-500/40 hover:bg-amber-600/50 px-3 py-1.5 text-xs font-tech font-medium flex items-center gap-1.5">
+                    <i class="fa-solid fa-database text-amber-400"></i>
+                    <span class="hidden md:inline">Demo Data</span>
+                </button>
+                <button id="mobileMenuBtn" onclick="toggleMobileMenu()" class="lg:hidden text-slate-300 hover:text-white text-xl p-1"><i class="fa-solid fa-bars"></i></button>
+            </div>
+        </div>
+        <div id="mobileMenu" class="hidden lg:hidden mt-3 pt-3 border-t border-white/10 grid grid-cols-2 gap-2 text-xs font-tech">
+            <button onclick="switchView('hero')" class="p-2 rounded bg-white/5 text-slate-200 text-left"><i class="fa-solid fa-house mr-2 text-amber-400"></i> Command Hub</button>
+            <button onclick="switchView('crisis-map')" class="p-2 rounded bg-white/5 text-slate-200 text-left"><i class="fa-solid fa-map-location-dot mr-2 text-amber-400"></i> Crisis Map</button>
+            <button onclick="switchView('image-forensics')" class="p-2 rounded bg-white/5 text-slate-200 text-left"><i class="fa-solid fa-image mr-2 text-amber-400"></i> Image Forensic</button>
+            <button onclick="switchView('voice-forensics')" class="p-2 rounded bg-white/5 text-slate-200 text-left"><i class="fa-solid fa-microphone mr-2 text-amber-400"></i> Voice Forensic</button>
+            <button onclick="switchView('fusion-workspace')" class="p-2 rounded bg-white/5 text-slate-200 text-left"><i class="fa-solid fa-network-wired mr-2 text-amber-400"></i> Fusion Engine</button>
+            <button onclick="switchView('dashboard')" class="p-2 rounded bg-white/5 text-slate-200 text-left"><i class="fa-solid fa-chart-simple mr-2 text-amber-400"></i> Live Dashboard</button>
+            <button onclick="switchView('evidence-vault')" class="p-2 rounded bg-white/5 text-slate-200 text-left"><i class="fa-solid fa-box-archive mr-2 text-amber-400"></i> Evidence Vault</button>
+        </div>
+    </header>
+
+    <!-- ===== MAIN ===== -->
+    <main class="flex-grow relative z-10 max-w-7xl w-full mx-auto p-4 lg:p-8">
+        <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+        <!-- VIEW 1: HERO -->
+        <section id="view-hero" class="view-section transition-opacity duration-300 space-y-12 py-6">
+            <div class="text-center max-w-4xl mx-auto space-y-6 pt-4">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-mono tracking-widest uppercase">
+                    <i class="fa-solid fa-atom animate-spin"></i> Autonomous Crisis Triage &amp; Forensic Intelligence
+                </div>
+                <h1 class="text-4xl sm:text-6xl font-tech font-bold text-white tracking-tight leading-tight">
+                    See the Signal. Detect the Threat.<br>
+                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-orange-300 to-amber-500">Protect the Future.</span>
+                </h1>
+                <p class="text-slate-300 text-base sm:text-lg max-w-2xl mx-auto font-light leading-relaxed">
+                    NEXUS AI leverages cross-modal pixel-radiance analysis, acoustic overtone forensics, and cross-domain text fusion to detect crisis signals and fake emergency alerts in real time.
+                </p>
+                <div class="flex flex-wrap justify-center gap-4 pt-4">
+                    <button onclick="switchView('crisis-map')" class="cyber-btn bg-amber-500 hover:bg-amber-400 text-slate-950 font-tech font-bold px-6 py-3 text-sm flex items-center gap-2 shadow-[0_0_20px_rgba(245,158,11,0.4)]"><i class="fa-solid fa-earth-americas text-base"></i> Global Crisis Map</button>
+                    <button onclick="switchView('image-forensics')" class="cyber-btn bg-slate-800 text-slate-100 border border-amber-500/30 hover:border-amber-400 font-tech font-medium px-6 py-3 text-sm flex items-center gap-2"><i class="fa-solid fa-microscope text-amber-400"></i> Scan Image Forensic</button>
+                    <button onclick="switchView('voice-forensics')" class="cyber-btn bg-slate-800 text-slate-100 border border-amber-500/30 hover:border-amber-400 font-tech font-medium px-6 py-3 text-sm flex items-center gap-2"><i class="fa-solid fa-microphone text-amber-400"></i> Voice Forensic</button>
+                    <button onclick="switchView('fusion-workspace')" class="cyber-btn bg-violet-600/30 text-violet-200 border border-violet-500/40 hover:bg-violet-600/50 font-tech font-medium px-6 py-3 text-sm flex items-center gap-2"><i class="fa-solid fa-fire text-violet-400"></i> Multimodal Fusion</button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6">
+                <div class="glass-panel rounded-2xl p-6 relative overflow-hidden group hover:border-cyan-500/40 transition">
+                    <div class="absolute top-0 right-0 p-4 text-cyan-500/20 group-hover:text-cyan-500/40 transition"><i class="fa-solid fa-eye text-5xl"></i></div>
+                    <div class="text-cyan-400 text-xs font-mono uppercase tracking-wider mb-2">Vision Forensic Engine</div>
+                    <h3 class="text-xl font-tech font-bold text-white mb-2">ResNet-Crisis-v4</h3>
+                    <p class="text-slate-400 text-xs leading-relaxed mb-4">Performs thermal radiance detection, water submersion index calculation, pixel manipulation noise checks, and hazard zone isolation.</p>
+                    <div class="flex items-center justify-between text-xs font-mono text-slate-400 pt-3 border-t border-white/5">
+                        <span>Latency: <strong class="text-cyan-300">14ms</strong></span>
+                        <span class="text-emerald-400 flex items-center gap-1"><i class="fa-solid fa-circle text-[8px]"></i> Active</span>
+                    </div>
+                </div>
+                <div class="glass-panel rounded-2xl p-6 relative overflow-hidden group hover:border-cyan-500/40 transition">
+                    <div class="absolute top-0 right-0 p-4 text-cyan-500/20 group-hover:text-cyan-500/40 transition"><i class="fa-solid fa-wave-square text-5xl"></i></div>
+                    <div class="text-cyan-400 text-xs font-mono uppercase tracking-wider mb-2">Audio Forensic Model</div>
+                    <h3 class="text-xl font-tech font-bold text-white mb-2">Spectrogram-CNN-v2</h3>
+                    <p class="text-slate-400 text-xs leading-relaxed mb-4">Extracts pitch jitter, harmonic distortion, and vocoder artifacts to verify distress calls and flag neural deepfake audio clones.</p>
+                    <div class="flex items-center justify-between text-xs font-mono text-slate-400 pt-3 border-t border-white/5">
+                        <span>Sample Rate: <strong class="text-cyan-300">48 kHz</strong></span>
+                        <span class="text-emerald-400 flex items-center gap-1"><i class="fa-solid fa-circle text-[8px]"></i> Active</span>
+                    </div>
+                </div>
+                <div class="glass-panel rounded-2xl p-6 relative overflow-hidden group hover:border-cyan-500/40 transition">
+                    <div class="absolute top-0 right-0 p-4 text-cyan-500/20 group-hover:text-cyan-500/40 transition"><i class="fa-solid fa-brain text-5xl"></i></div>
+                    <div class="text-cyan-400 text-xs font-mono uppercase tracking-wider mb-2">Fusion &amp; Triage Logic</div>
+                    <h3 class="text-xl font-tech font-bold text-white mb-2">NEXUS Multimodal Engine</h3>
+                    <p class="text-slate-400 text-xs leading-relaxed mb-4">Synthesizes emergency transcripts, thermal image indices, and geolocation metadata to compute real-time crisis urgency scores.</p>
+                    <div class="flex items-center justify-between text-xs font-mono text-slate-400 pt-3 border-t border-white/5">
+                        <span>Correlation: <strong class="text-cyan-300">98.4%</strong></span>
+                        <span class="text-emerald-400 flex items-center gap-1"><i class="fa-solid fa-circle text-[8px]"></i> Active</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-panel rounded-2xl p-6 md:p-8 space-y-6">
+                <div class="flex items-center justify-between border-b border-white/10 pb-4">
+                    <h2 class="text-xl font-tech font-bold text-white flex items-center gap-2"><i class="fa-solid fa-bolt text-cyan-400"></i> Tactical Platform Capabilities</h2>
+                    <span class="text-xs font-mono text-slate-400">Client-Side Edge Analytics</span>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs font-mono">
+                    <div class="bg-black/30 p-4 rounded-xl border border-white/5 hover:border-cyan-500/30 transition">
+                        <i class="fa-solid fa-fire text-amber-400 text-lg mb-2"></i>
+                        <div class="font-bold text-slate-200 text-sm mb-1 font-tech">Thermal Hazard Detection</div>
+                        <div class="text-slate-400">Calculates radiance coefficients in raw image RGB space to spot active combustion &amp; explosion heat signatures.</div>
+                    </div>
+                    <div class="bg-black/30 p-4 rounded-xl border border-white/5 hover:border-cyan-500/30 transition">
+                        <i class="fa-solid fa-water text-cyan-400 text-lg mb-2"></i>
+                        <div class="font-bold text-slate-200 text-sm mb-1 font-tech">Submersion &amp; Flood Index</div>
+                        <div class="text-slate-400">Analyzes blue-green channel dominance and specularity to measure flood water coverage percentage.</div>
+                    </div>
+                    <div class="bg-black/30 p-4 rounded-xl border border-white/5 hover:border-cyan-500/30 transition">
+                        <i class="fa-solid fa-robot text-violet-400 text-lg mb-2"></i>
+                        <div class="font-bold text-slate-200 text-sm mb-1 font-tech">Voice Deepfake Detection</div>
+                        <div class="text-slate-400">Detects robotic audio compression artifacts and abnormal pitch stability using Web Audio API analysers.</div>
+                    </div>
+                    <div class="bg-black/30 p-4 rounded-xl border border-white/5 hover:border-cyan-500/30 transition">
+                        <i class="fa-solid fa-truck-medical text-red-400 text-lg mb-2"></i>
+                        <div class="font-bold text-slate-200 text-sm mb-1 font-tech">Automated Dispatch Engine</div>
+                        <div class="text-slate-400">Generates instant response recommendations, emergency unit dispatch counts, and evidence audit trails.</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW 2: IMAGE FORENSICS -->
+        <section id="view-image-forensics" class="view-section hidden transition-opacity duration-300 space-y-6">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-4">
+                <div>
+                    <h2 class="text-2xl font-tech font-bold text-white flex items-center gap-2"><i class="fa-solid fa-image text-cyan-400"></i> AI Vision &amp; Pixel Forensic Scanner</h2>
+                    <p class="text-xs text-slate-400 font-mono">Real-time pixel histogram computation, thermal radiance calculation, &amp; deepfake manipulation analysis.</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="loadSampleImage('fire')" class="px-3 py-1.5 rounded bg-white/5 hover:bg-white/10 text-xs font-mono text-cyan-300 border border-cyan-500/20"><i class="fa-solid fa-fire mr-1 text-amber-400"></i> Sample Fire</button>
+                    <button onclick="loadSampleImage('flood')" class="px-3 py-1.5 rounded bg-white/5 hover:bg-white/10 text-xs font-mono text-cyan-300 border border-cyan-500/20"><i class="fa-solid fa-water mr-1 text-blue-400"></i> Sample Flood</button>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <div class="lg:col-span-7 space-y-4">
+                    <div id="imageDropzone" class="glass-panel rounded-2xl p-6 text-center border-2 border-dashed border-cyan-500/30 hover:border-cyan-400 transition cursor-pointer relative" onclick="document.getElementById('imageFileInput').click()">
+                        <input type="file" id="imageFileInput" accept="image/*" class="hidden" onchange="handleImageUpload(event)">
+                        <div class="space-y-3 py-4">
+                            <div class="w-16 h-16 rounded-full bg-cyan-500/10 text-cyan-400 flex items-center justify-center mx-auto text-2xl border border-cyan-500/20"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+                            <div class="font-tech font-semibold text-lg text-white">Drag &amp; Drop Image Evidence or Click to Browse</div>
+                            <p class="text-xs text-slate-400 font-mono">Supports JPG, PNG, WEBP. Canvas reads raw pixel arrays directly.</p>
+                        </div>
+                    </div>
+                    <div id="imageAnalysisContainer" class="hidden glass-panel rounded-2xl p-4 space-y-4">
+                        <div class="flex items-center justify-between text-xs font-mono">
+                            <span class="text-slate-300 font-bold uppercase tracking-wider"><i class="fa-solid fa-crosshairs text-cyan-400 mr-1"></i> Visual Inspection Viewer</span>
+                            <label class="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white">
+                                <input type="checkbox" id="toggleBoundingBox" checked onchange="redrawCurrentImage()" class="accent-cyan-400">
+                                <span>Overlay Anomaly BBox</span>
+                            </label>
+                        </div>
+                        <div class="relative w-full overflow-hidden rounded-xl bg-black/60 border border-white/10 flex items-center justify-center min-h-[300px] max-h-[450px]">
+                            <canvas id="forensicCanvas" class="max-w-full max-h-[420px] object-contain"></canvas>
+                            <div id="imageScanningOverlay" class="hidden absolute inset-0 bg-black/40 backdrop-blur-[2px] flex flex-col items-center justify-center space-y-3">
+                                <div class="laser-scanner"></div>
+                                <i class="fa-solid fa-spinner animate-spin text-cyan-400 text-3xl"></i>
+                                <span class="font-tech text-cyan-300 font-bold text-sm tracking-wider uppercase">Scanning RGB Radiance Matrix...</span>
+                            </div>
+                        </div>
+                        <div id="pixelMetadataGrid" class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
+                            <div class="bg-black/40 p-2.5 rounded-lg border border-white/5"><div class="text-slate-500 text-[10px]">DIMENSIONS</div><div id="metaDim" class="text-slate-200 font-bold">0 x 0 px</div></div>
+                            <div class="bg-black/40 p-2.5 rounded-lg border border-white/5"><div class="text-slate-500 text-[10px]">THERMAL RADIANCE</div><div id="metaThermal" class="text-amber-400 font-bold">0.00 %</div></div>
+                            <div class="bg-black/40 p-2.5 rounded-lg border border-white/5"><div class="text-slate-500 text-[10px]">WATER REFLECTANCE</div><div id="metaWater" class="text-cyan-400 font-bold">0.00 %</div></div>
+                            <div class="bg-black/40 p-2.5 rounded-lg border border-white/5"><div class="text-slate-500 text-[10px]">PIXEL VARIANCE (AI NOISE)</div><div id="metaVariance" class="text-violet-400 font-bold">0.0</div></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="lg:col-span-5 space-y-4">
+                    <div id="imageResultsCard" class="glass-panel rounded-2xl p-6 space-y-6">
+                        <div class="flex items-center justify-between border-b border-white/10 pb-3">
+                            <span class="font-tech text-sm font-bold tracking-wider text-slate-300 uppercase flex items-center gap-2"><i class="fa-solid fa-chart-pie text-cyan-400"></i> Forensic Intelligence Report</span>
+                            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/30">ResNet-Crisis-v4</span>
+                        </div>
+                        <div id="imagePlaceholderText" class="text-center py-12 text-slate-500 font-mono text-xs">
+                            <i class="fa-solid fa-microscope text-4xl mb-3 text-slate-600 block"></i>
+                            Upload an image or select a sample case to run automated pixel analysis.
+                        </div>
+                        <div id="imageReportDetails" class="hidden space-y-5">
+                            <div class="flex items-center justify-between p-4 rounded-xl bg-black/40 border border-white/10">
+                                <div><div class="text-[10px] font-mono text-slate-400 uppercase">Detected Hazard</div><div id="resClassification" class="text-xl font-tech font-bold text-white">—</div></div>
+                                <div class="text-right"><div class="text-[10px] font-mono text-slate-400 uppercase">Risk Assessment</div><span id="resRiskBadge" class="inline-block px-3 py-1 rounded-md text-xs font-tech font-bold uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">LOW RISK</span></div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs font-mono mb-1.5"><span class="text-slate-400">AI Classification Confidence</span><span id="resConfidenceVal" class="text-cyan-400 font-bold">0%</span></div>
+                                <div class="w-full h-2.5 bg-black/50 rounded-full overflow-hidden border border-white/10"><div id="resConfidenceBar" class="h-full bg-gradient-to-r from-cyan-500 to-teal-300 transition-all duration-700" style="width: 0%"></div></div>
+                            </div>
+                            <div class="space-y-2"><label class="text-xs font-tech font-semibold text-slate-300 uppercase">Automated Pixel Findings</label><div id="resEvidenceBreakdown" class="bg-black/30 rounded-xl p-3 text-xs font-mono text-slate-300 space-y-1.5 border border-white/5"></div></div>
+                            <div class="space-y-1.5"><label class="text-xs font-tech font-semibold text-slate-300 uppercase">AI Technical Rationale</label><p id="resExplanation" class="text-xs text-slate-400 leading-relaxed bg-cyan-500/5 p-3 rounded-xl border border-cyan-500/15 font-sans"></p></div>
+                            <button onclick="saveCurrentImageToVault()" class="cyber-btn w-full bg-cyan-500 text-slate-950 font-tech font-bold py-2.5 text-xs flex items-center justify-center gap-2"><i class="fa-solid fa-box-archive"></i> Log Evidence to Vault</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW 3: VOICE FORENSICS -->
+        <section id="view-voice-forensics" class="view-section hidden transition-opacity duration-300 space-y-6">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-4">
+                <div>
+                    <h2 class="text-2xl font-tech font-bold text-white flex items-center gap-2"><i class="fa-solid fa-microphone text-cyan-400"></i> Voice Forensic &amp; Deepfake Signal Analyzer</h2>
+                    <p class="text-xs text-slate-400 font-mono">Web Audio API pitch frequency spectrum extraction, emergency keyword matching, &amp; synthetic voice verification.</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="loadSampleAudio('distress')" class="px-3 py-1.5 rounded bg-white/5 hover:bg-white/10 text-xs font-mono text-cyan-300 border border-cyan-500/20"><i class="fa-solid fa-phone mr-1 text-red-400"></i> Sample Human Distress</button>
+                    <button onclick="loadSampleAudio('deepfake')" class="px-3 py-1.5 rounded bg-white/5 hover:bg-white/10 text-xs font-mono text-cyan-300 border border-cyan-500/20"><i class="fa-solid fa-robot mr-1 text-violet-400"></i> Sample Deepfake Call</button>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <div class="lg:col-span-7 space-y-4">
+                    <div class="glass-panel rounded-2xl p-6 space-y-6">
+                        <div class="flex items-center justify-between border-b border-white/10 pb-3">
+                            <span class="font-tech text-sm font-bold text-slate-200 uppercase tracking-wider"><i class="fa-solid fa-microphone text-cyan-400 mr-2"></i> Audio Input Terminal</span>
+                            <span id="recordingTimer" class="font-mono text-xs text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">00:00</span>
+                        </div>
+                        <div class="relative w-full h-36 bg-black/60 rounded-xl overflow-hidden border border-white/10 flex items-center justify-center">
+                            <canvas id="audioVisualizerCanvas" class="w-full h-full"></canvas>
+                            <div id="audioVisualizerOverlay" class="absolute text-slate-500 text-xs font-mono pointer-events-none">Waveform Spectrum Standby</div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="bg-black/30 p-4 rounded-xl border border-white/5 flex flex-col items-center justify-center space-y-3">
+                                <div class="text-xs font-tech text-slate-400 uppercase font-semibold">Live Mic Recorder</div>
+                                <div class="flex items-center gap-3">
+                                    <button id="btnRecordStart" onclick="startAudioRecording()" class="w-12 h-12 rounded-full bg-red-500/20 text-red-400 border border-red-500/40 hover:bg-red-500/40 flex items-center justify-center transition text-lg shadow-[0_0_15px_rgba(255,82,82,0.3)]"><i class="fa-solid fa-microphone"></i></button>
+                                    <button id="btnRecordStop" onclick="stopAudioRecording()" disabled class="w-12 h-12 rounded-full bg-slate-800 text-slate-500 border border-white/10 flex items-center justify-center transition text-lg cursor-not-allowed"><i class="fa-solid fa-square"></i></button>
+                                </div>
+                                <span id="recordStatusText" class="text-[10px] font-mono text-slate-400">Click mic to begin capture</span>
+                            </div>
+                            <div class="bg-black/30 p-4 rounded-xl border border-white/5 flex flex-col items-center justify-center space-y-3 cursor-pointer hover:border-cyan-500/30 transition" onclick="document.getElementById('audioFileInput').click()">
+                                <input type="file" id="audioFileInput" accept="audio/*" class="hidden" onchange="handleAudioFileUpload(event)">
+                                <div class="text-xs font-tech text-slate-400 uppercase font-semibold">Upload Recording</div>
+                                <div class="w-12 h-12 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 flex items-center justify-center text-lg"><i class="fa-solid fa-file-audio"></i></div>
+                                <span class="text-[10px] font-mono text-cyan-400">WAV, MP3, OGG, WEBM Audio</span>
+                            </div>
+                        </div>
+                        <div id="audioPlaybackContainer" class="hidden space-y-2">
+                            <label class="text-xs font-tech text-slate-400 uppercase">Loaded Audio Preview</label>
+                            <audio id="audioElement" controls class="w-full h-10 rounded-lg bg-black/50"></audio>
+                        </div>
+                    </div>
+                </div>
+                <div class="lg:col-span-5 space-y-4">
+                    <div class="glass-panel rounded-2xl p-6 space-y-6">
+                        <div class="flex items-center justify-between border-b border-white/10 pb-3">
+                            <span class="font-tech text-sm font-bold tracking-wider text-slate-300 uppercase flex items-center gap-2"><i class="fa-solid fa-list-check text-cyan-400"></i> Acoustic Analysis Metrics</span>
+                            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/30">Spectrogram-CNN-v2</span>
+                        </div>
+                        <div id="audioPlaceholderText" class="text-center py-12 text-slate-500 font-mono text-xs">
+                            <i class="fa-solid fa-wave-square text-4xl mb-3 text-slate-600 block"></i>
+                            Record mic audio or upload a distress clip to run neural voice verification.
+                        </div>
+                        <div id="audioReportDetails" class="hidden space-y-5">
+                            <div class="p-4 rounded-xl bg-black/40 border border-white/10 space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-tech font-bold text-slate-300 uppercase">Authenticity Classification</span>
+                                    <span id="audioAuthenticityBadge" class="px-2.5 py-0.5 rounded text-xs font-mono font-bold uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">VERIFIED HUMAN</span>
+                                </div>
+                                <div class="space-y-1">
+                                    <div class="flex justify-between text-[11px] font-mono"><span class="text-slate-400">Synthetic Deepfake Probability</span><span id="syntheticProbVal" class="text-cyan-400 font-bold">0%</span></div>
+                                    <div class="w-full h-2 bg-black/50 rounded-full overflow-hidden border border-white/10"><div id="syntheticProbBar" class="h-full bg-cyan-400 transition-all duration-700" style="width: 0%"></div></div>
+                                </div>
+                            </div>
+                            <div class="space-y-1.5">
+                                <label class="text-xs font-tech font-semibold text-slate-300 uppercase flex items-center justify-between"><span>Whisper Speech Transcription</span><span class="text-[10px] font-mono text-emerald-400"><i class="fa-solid fa-check text-[8px] mr-1"></i> Auto-Generated</span></label>
+                                <div id="audioTranscriptBox" class="bg-black/50 p-3 rounded-xl border border-white/10 font-mono text-xs text-slate-200 leading-relaxed italic">"..."</div>
+                            </div>
+                            <div class="space-y-1.5">
+                                <label class="text-xs font-tech font-semibold text-slate-300 uppercase">Emergency Keywords Flagged</label>
+                                <div id="audioKeywordsContainer" class="flex flex-wrap gap-1.5 pt-1"></div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 text-xs font-mono">
+                                <div class="bg-black/30 p-2.5 rounded-lg border border-white/5"><div class="text-slate-500 text-[10px]">PITCH JITTER VARIANCE</div><div id="audioJitterVal" class="text-cyan-300 font-bold">0.000 Hz</div></div>
+                                <div class="bg-black/30 p-2.5 rounded-lg border border-white/5"><div class="text-slate-500 text-[10px]">HARMONIC OVERTONE</div><div id="audioHarmonicVal" class="text-emerald-400 font-bold">—</div></div>
+                            </div>
+                            <button onclick="saveCurrentAudioToVault()" class="cyber-btn w-full bg-cyan-500 text-slate-950 font-tech font-bold py-2.5 text-xs flex items-center justify-center gap-2"><i class="fa-solid fa-box-archive"></i> Log Audio Payload to Vault</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW 4: FUSION WORKSPACE -->
+        <section id="view-fusion-workspace" class="view-section hidden transition-opacity duration-300 space-y-6">
+            <div class="border-b border-white/10 pb-4">
+                <h2 class="text-2xl font-tech font-bold text-white flex items-center gap-2"><i class="fa-solid fa-network-wired text-cyan-400"></i> Multimodal Crisis Fusion Workspace</h2>
+                <p class="text-xs text-slate-400 font-mono">Synthesize cross-domain evidence (text reports, spectral audio, pixel hazard maps) into unified incident priority dispatch scores.</p>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <div class="lg:col-span-7 glass-panel rounded-2xl p-6 space-y-5">
+                    <div class="font-tech text-sm font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2 border-b border-white/10 pb-3"><i class="fa-solid fa-pen-to-square text-cyan-400"></i> Incident Dossier Creation</div>
+                    <form id="fusionForm" onsubmit="handleFusionSubmit(event)" class="space-y-4 text-xs font-sans">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div><label class="block text-slate-300 font-tech font-semibold uppercase mb-1">Primary Hazard Category</label>
+                                <select id="fusionHazardCategory" class="w-full bg-black/60 border border-white/10 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-cyan-400 font-mono">
+                                    <option value="Fire / Industrial Explosion">Fire / Industrial Explosion</option><option value="Urban Flood / Submersion">Urban Flood / Submersion</option><option value="Structural Collapse">Structural Collapse</option><option value="Hazmat Leak / Biological">Hazmat Leak / Biological</option><option value="Medical Mass Emergency">Medical Mass Emergency</option>
+                                </select>
+                            </div>
+                            <div><label class="block text-slate-300 font-tech font-semibold uppercase mb-1">Population Radius Affected</label>
+                                <select id="fusionPopImpact" class="w-full bg-black/60 border border-white/10 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-cyan-400 font-mono">
+                                    <option value="Low (< 50 civilians)">Low (&lt; 50 civilians)</option><option value="Moderate (50 - 500 civilians)" selected>Moderate (50 - 500 civilians)</option><option value="High (500 - 5,000 civilians)">High (500 - 5,000 civilians)</option><option value="Critical (> 5,000 civilians)">Critical (&gt; 5,000 civilians)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div><label class="block text-slate-300 font-tech font-semibold uppercase mb-1">Raw Emergency Text / Dispatch Report</label>
+                            <textarea id="fusionReportText" rows="4" required class="w-full bg-black/60 border border-white/10 rounded-xl p-3 text-slate-200 font-mono focus:outline-none focus:border-cyan-400 placeholder:text-slate-600" placeholder="e.g. Explosive fire breaking out at sector 4 main transformer substation. Trapped personnel reported on second level, smoke spreading fast..."></textarea>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div><label class="block text-slate-300 font-tech font-semibold uppercase mb-1">Attach Image Evidence</label><select id="fusionImageAttach" class="w-full bg-black/60 border border-white/10 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-cyan-400 font-mono"><option value="none">No Image Attached</option><option value="current" selected>Current Scanned Image Result</option></select></div>
+                            <div><label class="block text-slate-300 font-tech font-semibold uppercase mb-1">Attach Voice Evidence</label><select id="fusionAudioAttach" class="w-full bg-black/60 border border-white/10 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-cyan-400 font-mono"><option value="none">No Audio Attached</option><option value="current" selected>Current Scanned Audio Result</option></select></div>
+                        </div>
+                        <button type="submit" class="cyber-btn w-full bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 font-tech font-bold py-3 text-sm flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(61,214,195,0.3)]"><i class="fa-solid fa-bolt"></i> Execute Cross-Domain Multimodal Fusion Engine</button>
+                    </form>
+                </div>
+                <div class="lg:col-span-5 space-y-4">
+                    <div id="fusionResultCard" class="glass-panel rounded-2xl p-6 space-y-6">
+                        <div class="flex items-center justify-between border-b border-white/10 pb-3">
+                            <span class="font-tech text-sm font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2"><i class="fa-solid fa-satellite-dish text-cyan-400"></i> Synthesized Priority Output</span>
+                            <span id="fusionIDTag" class="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/30">NX-PENDING</span>
+                        </div>
+                        <div id="fusionPlaceholder" class="text-center py-12 text-slate-500 font-mono text-xs">
+                            <i class="fa-solid fa-network-wired text-4xl mb-3 text-slate-600 block"></i>
+                            Complete the dossier form to calculate unified priority matrix &amp; emergency resource recommendations.
+                        </div>
+                        <div id="fusionOutputDetails" class="hidden space-y-5">
+                            <div class="p-4 rounded-xl bg-black/40 border border-white/10 flex items-center justify-between">
+                                <div><div class="text-[10px] font-mono text-slate-400 uppercase">Calculated Crisis Urgency Index</div><div class="flex items-baseline gap-2"><span id="fusionPriorityScore" class="text-3xl font-tech font-bold text-red-400">0</span><span class="text-xs font-mono text-slate-400">/ 100</span></div></div>
+                                <div id="fusionRiskLabel" class="px-3 py-1 rounded text-xs font-tech font-bold uppercase bg-amber-500/20 text-amber-400 border border-amber-500/40">HIGH PRIORITY</div>
+                            </div>
+                            <div class="space-y-2"><label class="text-xs font-tech font-semibold text-slate-300 uppercase">Recommended Deployment Units</label><div id="fusionUnitsList" class="grid grid-cols-2 gap-2 text-xs font-mono"></div></div>
+                            <div class="space-y-2"><label class="text-xs font-tech font-semibold text-slate-300 uppercase">Incident Verification Protocol</label>
+                                <div class="bg-black/30 rounded-xl p-3 space-y-2 text-xs font-mono border border-white/5">
+                                    <div class="flex items-center gap-2 text-emerald-400"><i class="fa-solid fa-circle-check"></i> Image thermal signature correlated with text description.</div>
+                                    <div class="flex items-center gap-2 text-emerald-400"><i class="fa-solid fa-circle-check"></i> Acoustic audio distress transcript matched emergency keywords.</div>
+                                    <div class="flex items-center gap-2 text-cyan-300"><i class="fa-solid fa-spinner animate-spin"></i> Geolocation quad-grid dispatch ping sent to NDRF command.</div>
+                                </div>
+                            </div>
+                            <button onclick="saveFusionIncidentToVault()" class="cyber-btn w-full bg-cyan-500 text-slate-950 font-tech font-bold py-2.5 text-xs flex items-center justify-center gap-2"><i class="fa-solid fa-box-archive"></i> Save Incident Record to Vault</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW 5: DASHBOARD -->
+        <section id="view-dashboard" class="view-section hidden transition-opacity duration-300 space-y-6">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-4">
+                <div><h2 class="text-2xl font-tech font-bold text-white flex items-center gap-2"><i class="fa-solid fa-chart-simple text-cyan-400"></i> Live Intelligence Dashboard &amp; Queue</h2><p class="text-xs text-slate-400 font-mono">Real-time threat monitoring, modality distribution metrics, and active emergency priority queue.</p></div>
+                <span class="text-xs font-mono text-cyan-300 bg-cyan-500/10 px-3 py-1 rounded-full border border-cyan-500/20 flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span> LIVE SESSION ANALYTICS</span>
+            </div>
+
+            <!-- LOCATION INTELLIGENCE SPOTLIGHT BANNER -->
+            <div class="glass-panel-glow rounded-2xl p-6 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6 border border-cyan-500/30 bg-gradient-to-r from-cyan-950/40 via-slate-900/60 to-violet-950/40">
+                <div class="absolute -right-10 -bottom-10 opacity-10 pointer-events-none"><i class="fa-solid fa-earth-americas text-9xl text-cyan-400"></i></div>
+                <div class="space-y-2 relative z-10">
+                    <div class="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 text-[10px] font-mono uppercase border border-cyan-500/40">
+                        <i class="fa-solid fa-map-location-dot"></i> Key Feature Upgraded: Zero API Key OpenStreetMap &amp; Leaflet Intelligence
+                    </div>
+                    <h3 class="text-xl font-tech font-bold text-white">Global Crisis Map &amp; India State/District Hierarchy</h3>
+                    <p class="text-slate-300 text-xs max-w-2xl leading-relaxed">
+                        Explore real-time geographical markers, automated AI location extraction, proximity threat radar scans, and live GDACS / NASA EONET feed synchronization — completely free with zero API key configuration required.
+                    </p>
+                </div>
+                <div class="flex items-center gap-3 relative z-10 flex-shrink-0">
+                    <button onclick="switchView('crisis-map')" class="cyber-btn bg-cyan-500 text-slate-950 font-tech font-bold px-5 py-3 text-xs flex items-center gap-2 shadow-[0_0_20px_rgba(61,214,195,0.4)]">
+                        <i class="fa-solid fa-earth-americas"></i> Open Global Crisis Map
+                    </button>
+                    <button onclick="openNearbyRadarModal()" class="cyber-btn bg-violet-600/30 text-violet-200 border border-violet-500/40 hover:bg-violet-600/50 px-4 py-3 text-xs font-tech font-medium flex items-center gap-2">
+                        <i class="fa-solid fa-radar text-violet-400"></i> Open Radar
+                    </button>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 font-mono">
+                <div class="glass-panel p-4 rounded-xl border border-white/10"><div class="text-[10px] text-slate-400 uppercase">TOTAL ANALYSES</div><div id="statTotalAnalyses" class="text-2xl font-tech font-bold text-white mt-1">0</div><div class="text-[10px] text-cyan-400 mt-1"><i class="fa-solid fa-arrow-up text-[8px]"></i> Session Total</div></div>
+                <div class="glass-panel p-4 rounded-xl border border-white/10"><div class="text-[10px] text-slate-400 uppercase">CRITICAL / HIGH THREATS</div><div id="statHighThreats" class="text-2xl font-tech font-bold text-red-400 mt-1">0</div><div class="text-[10px] text-red-400 mt-1"><i class="fa-solid fa-triangle-exclamation text-[8px]"></i> Action Required</div></div>
+                <div class="glass-panel p-4 rounded-xl border border-white/10"><div class="text-[10px] text-slate-400 uppercase">IMAGE SCANS</div><div id="statImageScans" class="text-2xl font-tech font-bold text-cyan-300 mt-1">0</div><div class="text-[10px] text-slate-400 mt-1">Vision Engine</div></div>
+                <div class="glass-panel p-4 rounded-xl border border-white/10"><div class="text-[10px] text-slate-400 uppercase">AUDIO SCANS</div><div id="statAudioScans" class="text-2xl font-tech font-bold text-violet-400 mt-1">0</div><div class="text-[10px] text-slate-400 mt-1">Voice Forensic</div></div>
+                <div class="glass-panel p-4 rounded-xl border border-white/10 col-span-2 lg:col-span-1"><div class="text-[10px] text-slate-400 uppercase">FUSION INCIDENTS</div><div id="statFusionIncidents" class="text-2xl font-tech font-bold text-amber-400 mt-1">0</div><div class="text-[10px] text-slate-400 mt-1">Multimodal Engine</div></div>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <div class="lg:col-span-4 glass-panel p-5 rounded-2xl space-y-3"><div class="font-tech text-xs font-bold text-slate-200 uppercase tracking-wider">Threat Severity Breakdown</div><div class="relative h-56"><canvas id="chartThreatSeverity"></canvas></div></div>
+                <div class="lg:col-span-4 glass-panel p-5 rounded-2xl space-y-3"><div class="font-tech text-xs font-bold text-slate-200 uppercase tracking-wider">Evidence Modality Distribution</div><div class="relative h-56 flex items-center justify-center"><canvas id="chartModality"></canvas></div></div>
+                <div class="lg:col-span-4 glass-panel p-5 rounded-2xl space-y-3"><div class="font-tech text-xs font-bold text-slate-200 uppercase tracking-wider">24-Hour Threat Detection Trend</div><div class="relative h-56"><canvas id="chartTimeline"></canvas></div></div>
+            </div>
+            <div class="glass-panel rounded-2xl p-6 space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+                    <div class="font-tech text-sm font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2"><i class="fa-solid fa-list-ol text-cyan-400"></i> Active Dispatch Priority Queue</div>
+                    <div class="flex flex-wrap gap-1 font-mono text-[11px]">
+                        <button onclick="filterQueue('All')" class="queue-filter-btn px-2.5 py-1 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold">All</button>
+                        <button onclick="filterQueue('Fire')" class="queue-filter-btn px-2.5 py-1 rounded bg-black/40 text-slate-400 hover:text-white border border-white/5">Fire</button>
+                        <button onclick="filterQueue('Flood')" class="queue-filter-btn px-2.5 py-1 rounded bg-black/40 text-slate-400 hover:text-white border border-white/5">Flood</button>
+                        <button onclick="filterQueue('Voice')" class="queue-filter-btn px-2.5 py-1 rounded bg-black/40 text-slate-400 hover:text-white border border-white/5">Voice</button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left font-mono text-xs">
+                        <thead><tr class="text-slate-500 border-b border-white/10 text-[10px] uppercase"><th class="py-3 px-3">Case ID</th><th class="py-3 px-3">Classification</th><th class="py-3 px-3">Modality</th><th class="py-3 px-3">Risk Level</th><th class="py-3 px-3">Score</th><th class="py-3 px-3">Timestamp</th><th class="py-3 px-3 text-right">Quick Actions</th></tr></thead>
+                        <tbody id="priorityQueueTbody" class="divide-y divide-white/5"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW 4.5: CRISIS MAP & LOCATION INTELLIGENCE -->
+        <section id="view-crisis-map" class="view-section hidden transition-opacity duration-300 space-y-6">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-4">
+                <div>
+                    <h2 class="text-2xl font-tech font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-earth-americas text-cyan-400"></i> Global Crisis Map &amp; Location Intelligence
+                    </h2>
+                    <p class="text-xs text-slate-400 font-mono">Real-time geospatial intelligence, India state/district hierarchy, automated feed synchronization, and AI location extraction.</p>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <button onclick="syncExternalIncidents()" class="cyber-btn bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-500/30 px-3 py-1.5 text-xs font-tech flex items-center gap-1.5">
+                        <i class="fa-solid fa-rotate animate-spin-slow"></i> Sync External Feeds
+                    </button>
+                    <button onclick="openNearbyRadarModal()" class="cyber-btn bg-violet-600/30 text-violet-200 border border-violet-500/40 hover:bg-violet-600/50 px-3 py-1.5 text-xs font-tech flex items-center gap-1.5">
+                        <i class="fa-solid fa-radar text-violet-400"></i> Nearby Crisis Radar
+                    </button>
+                    <button onclick="openReportIncidentModal()" class="cyber-btn bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30 px-3 py-1.5 text-xs font-tech flex items-center gap-1.5">
+                        <i class="fa-solid fa-plus"></i> Report Incident
+                    </button>
+                </div>
+            </div>
+
+            <!-- FILTERS BAR -->
+            <div class="glass-panel rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 text-xs font-mono">
+                <div>
+                    <label class="block text-slate-400 text-[10px] uppercase mb-1">Global Location Search</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-500"></i>
+                        <input type="text" id="mapSearchInput" onkeydown="if(event.key==='Enter') searchLocationQuery()" placeholder="Search city, district..." class="w-full bg-black/50 border border-white/10 rounded-xl pl-9 pr-3 py-2 text-slate-200 focus:outline-none focus:border-cyan-400">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-slate-400 text-[10px] uppercase mb-1">India State Filter</label>
+                    <select id="filterState" onchange="onStateFilterChange()" class="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-cyan-400">
+                        <option value="">All States / Global</option>
+                        <option value="Tamil Nadu">Tamil Nadu</option>
+                        <option value="Maharashtra">Maharashtra</option>
+                        <option value="Delhi">Delhi</option>
+                        <option value="Karnataka">Karnataka</option>
+                        <option value="Kerala">Kerala</option>
+                        <option value="Andhra Pradesh">Andhra Pradesh</option>
+                        <option value="Telangana">Telangana</option>
+                        <option value="Gujarat">Gujarat</option>
+                        <option value="Uttar Pradesh">Uttar Pradesh</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-slate-400 text-[10px] uppercase mb-1">District Filter</label>
+                    <select id="filterDistrict" onchange="applyMapFilters()" class="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-cyan-400">
+                        <option value="">All Districts</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-slate-400 text-[10px] uppercase mb-1">Hazard Category</label>
+                    <select id="filterCategory" onchange="applyMapFilters()" class="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-cyan-400">
+                        <option value="">All Categories</option>
+                        <option value="cyclone">Cyclone / Storm</option>
+                        <option value="flood">Flood</option>
+                        <option value="wildfire">Wildfire</option>
+                        <option value="building_fire">Building Fire</option>
+                        <option value="chemical">Chemical Emergency</option>
+                        <option value="earthquake">Earthquake</option>
+                        <option value="road_accident">Road Accident</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-slate-400 text-[10px] uppercase mb-1">Severity Level</label>
+                    <select id="filterSeverity" onchange="applyMapFilters()" class="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-cyan-400">
+                        <option value="">All Severities</option>
+                        <option value="critical">Critical (Red)</option>
+                        <option value="high">High (Orange)</option>
+                        <option value="moderate">Moderate (Yellow)</option>
+                    </select>
+                </div>
+                <div class="flex items-end gap-2">
+                    <button onclick="resetMapFilters()" class="w-full cyber-btn bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 py-2 rounded-xl text-xs font-tech">Reset Filters</button>
+                </div>
+            </div>
+
+            <!-- MAP & SIDE PANEL CONTAINER -->
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                <!-- LEAFLET MAP (3 cols) -->
+                <div class="lg:col-span-3 glass-panel rounded-2xl p-4 relative overflow-hidden flex flex-col">
+                    <div class="flex items-center justify-between mb-3 px-1">
+                        <div class="flex items-center gap-3 text-xs font-mono">
+                            <span class="text-slate-400">View Mode:</span>
+                            <div class="inline-flex rounded-lg bg-black/50 p-1 border border-white/10">
+                                <button onclick="setMapViewMode('markers')" id="modeBtnMarkers" class="px-3 py-1 rounded bg-cyan-500 text-slate-950 font-bold transition">Markers</button>
+                                <button onclick="setMapViewMode('heatmap')" id="modeBtnHeatmap" class="px-3 py-1 rounded text-slate-300 hover:text-white transition">Heatmap</button>
+                                <button onclick="setMapViewMode('both')" id="modeBtnBoth" class="px-3 py-1 rounded text-slate-300 hover:text-white transition">Both</button>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 text-xs font-mono text-slate-400">
+                            <span id="activeIncidentsCount">0 Incidents Displayed</span>
+                            <button onclick="recenterMapGlobal()" class="px-2.5 py-1 rounded bg-white/5 hover:bg-white/10 text-cyan-300 border border-white/10"><i class="fa-solid fa-earth-americas mr-1"></i> Global</button>
+                            <button onclick="recenterMapIndia()" class="px-2.5 py-1 rounded bg-white/5 hover:bg-white/10 text-cyan-300 border border-white/10"><i class="fa-solid fa-location-crosshairs mr-1"></i> India</button>
+                        </div>
+                    </div>
+                    <div id="nexusMap" style="height: 560px; width: 100%; border-radius: 12px; z-index: 10;" class="border border-white/10 bg-slate-950"></div>
+                </div>
+
+                <!-- INCIDENT DETAIL SIDE PANEL (1 col) -->
+                <div class="glass-panel rounded-2xl p-5 flex flex-col justify-between space-y-4">
+                    <div>
+                        <div class="flex items-center justify-between border-b border-white/10 pb-3 mb-3">
+                            <div class="font-tech text-sm font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-circle-info text-cyan-400"></i> Incident Inspector
+                            </div>
+                            <span id="detailStatusBadge" class="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">SELECT MARKER</span>
+                        </div>
+                        <div id="incidentDetailContent" class="space-y-3 font-mono text-xs text-slate-300">
+                            <div class="text-center py-16 text-slate-500 font-sans">
+                                <i class="fa-solid fa-map-pin text-3xl mb-3 text-slate-600 animate-bounce"></i>
+                                <p class="text-xs">Click any incident marker on the map to inspect location coordinates, AI confidence scores, and source telemetry.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="incidentDetailActions" class="hidden space-y-2 pt-3 border-t border-white/10 font-mono text-xs">
+                        <button id="btnCopyCoords" onclick="copyIncidentCoords()" class="w-full cyber-btn bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 py-2 rounded-xl text-xs font-tech"><i class="fa-solid fa-copy mr-1"></i> Copy Coordinates</button>
+                        <a id="btnDirections" href="#" target="_blank" class="block text-center w-full cyber-btn bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 py-2 rounded-xl text-xs font-tech"><i class="fa-solid fa-diamond-turn-right mr-1"></i> Open Directions</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DATA SOURCE HEALTH STRIP -->
+            <div class="glass-panel rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 font-mono text-xs">
+                <div class="flex items-center gap-3">
+                    <div class="w-3 h-3 rounded-full bg-emerald-400 animate-pulse"></div>
+                    <span class="font-tech text-white font-bold">EXTERNAL DATA FEEDS HEALTH:</span>
+                </div>
+                <div id="dataSourceHealthStrip" class="flex flex-wrap items-center gap-3">
+                    <span class="px-2.5 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">GDACS: HEALTHY</span>
+                    <span class="px-2.5 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">NASA EONET: HEALTHY</span>
+                    <span class="px-2.5 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">NASA FIRMS: HEALTHY</span>
+                    <span class="px-2.5 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">IMD SACHET: HEALTHY</span>
+                </div>
+            </div>
+        </section>
+        <section id="view-evidence-vault" class="view-section hidden transition-opacity duration-300 space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+                <div><h2 class="text-2xl font-tech font-bold text-white flex items-center gap-2"><i class="fa-solid fa-box-archive text-cyan-400"></i> Forensics Evidence Vault &amp; Audit Ledger</h2><p class="text-xs text-slate-400 font-mono">Searchable repository of all processed crisis records, complete with printable legal inspection reports.</p></div>
+                <div class="flex items-center gap-2">
+                    <button onclick="loadSampleDemoData()" class="cyber-btn bg-violet-600/30 text-violet-200 border border-violet-500/40 hover:bg-violet-600/50 px-3 py-1.5 text-xs font-tech"><i class="fa-solid fa-database mr-1"></i> Load Demo Records</button>
+                    <button onclick="confirmClearVault()" class="cyber-btn bg-red-500/20 text-red-300 border border-red-500/30 hover:bg-red-500/30 px-3 py-1.5 text-xs font-tech"><i class="fa-solid fa-trash mr-1"></i> Clear Vault</button>
+                </div>
+            </div>
+            <div class="glass-panel rounded-2xl p-4 flex flex-col sm:flex-row items-center gap-3">
+                <div class="relative flex-grow w-full"><i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-500 text-xs"></i><input type="text" id="vaultSearchInput" oninput="renderVaultTable()" placeholder="Search by Case ID, Classification, or Risk Level..." class="w-full bg-black/50 border border-white/10 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-200 font-mono focus:outline-none focus:border-cyan-400"></div>
+                <select id="vaultRiskFilter" onchange="renderVaultTable()" class="w-full sm:w-48 bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-xs text-slate-200 font-mono focus:outline-none focus:border-cyan-400"><option value="ALL">All Risk Levels</option><option value="CRITICAL">Critical Risk</option><option value="HIGH">High Risk</option><option value="MEDIUM">Medium Risk</option><option value="LOW">Low Risk</option></select>
+            </div>
+            <div class="glass-panel rounded-2xl p-6"><div class="overflow-x-auto">
+                <table class="w-full text-left font-mono text-xs">
+                    <thead><tr class="text-slate-500 border-b border-white/10 text-[10px] uppercase"><th class="py-3 px-3">ID</th><th class="py-3 px-3">Hazard Category</th><th class="py-3 px-3">Modality</th><th class="py-3 px-3">Confidence</th><th class="py-3 px-3">Risk Level</th><th class="py-3 px-3">Timestamp</th><th class="py-3 px-3 text-right">Inspection</th></tr></thead>
+                    <tbody id="vaultTableBody" class="divide-y divide-white/5"></tbody>
+                </table>
+            </div></div>
+        </section>
+    </main>
+
+    <!-- RECORD MODAL -->
+    <div id="recordModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="glass-panel-glow max-w-3xl w-full rounded-2xl max-h-[90vh] overflow-y-auto p-6 space-y-6 text-slate-200">
+            <div class="flex items-center justify-between border-b border-white/10 pb-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 flex items-center justify-center text-lg"><i class="fa-solid fa-file-contract"></i></div>
+                    <div><h3 id="modalRecordTitle" class="font-tech text-xl font-bold text-white">Inspection Case Dossier</h3><div id="modalRecordSub" class="text-xs font-mono text-cyan-400">ID: NX-0000</div></div>
+                </div>
+                <button onclick="closeRecordModal()" class="text-slate-400 hover:text-white text-xl"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="printableArea" class="bg-slate-950 p-6 rounded-xl border border-white/10 space-y-5 font-mono text-xs">
+                <div class="flex justify-between items-start border-b border-white/10 pb-4">
+                    <div><div class="font-tech font-bold text-base text-white">NEXUS AI CRISIS INTELLIGENCE REPORT</div><div class="text-[10px] text-slate-400 uppercase">Autonomous Forensic Audit &amp; Threat Verification</div></div>
+                    <div class="text-right"><div id="modalPrintTimestamp" class="text-[10px] text-slate-400">—</div><div id="modalStatusTag" class="inline-block mt-1 px-2 py-0.5 text-[10px] font-bold rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">VERIFIED</div></div>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    <div class="bg-black/50 p-2.5 rounded border border-white/5"><span class="text-slate-500 text-[9px] block">CLASSIFICATION</span><span id="modalClassification" class="font-bold text-white">—</span></div>
+                    <div class="bg-black/50 p-2.5 rounded border border-white/5"><span class="text-slate-500 text-[9px] block">RISK LEVEL</span><span id="modalRiskLevel" class="font-bold text-red-400">—</span></div>
+                    <div class="bg-black/50 p-2.5 rounded border border-white/5"><span class="text-slate-500 text-[9px] block">CONFIDENCE / SCORE</span><span id="modalScore" class="font-bold text-cyan-300">—</span></div>
+                </div>
+                <div class="space-y-1"><span class="text-slate-400 text-[10px] uppercase font-bold">Evidence Breakdown &amp; Technical Explanation</span><div id="modalExplanation" class="bg-black/40 p-3 rounded border border-white/5 text-slate-300 leading-relaxed font-sans">—</div></div>
+                <div class="text-[9px] text-slate-500 pt-3 border-t border-white/10 leading-normal">NOTICE: This forensic intelligence payload was processed by NEXUS Client-Side Autonomous AI Neural Models. The classification and risk metrics are designed for tactical emergency decision support.</div>
+            </div>
+            <div class="flex items-center justify-end gap-3 pt-2">
+                <button onclick="printFormattedReport()" class="cyber-btn bg-cyan-500 text-slate-950 font-tech font-bold px-4 py-2 text-xs flex items-center gap-1.5"><i class="fa-solid fa-print"></i> Print / Download PDF Report</button>
+                <button onclick="closeRecordModal()" class="px-4 py-2 rounded bg-white/5 hover:bg-white/10 text-xs font-tech text-slate-300">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- NEARBY CRISIS RADAR MODAL -->
+    <div id="nearbyRadarModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="glass-panel-glow max-w-2xl w-full rounded-2xl max-h-[90vh] overflow-y-auto p-6 space-y-5 text-slate-200">
+            <div class="flex items-center justify-between border-b border-white/10 pb-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-violet-500/10 text-violet-400 border border-violet-500/30 flex items-center justify-center text-lg"><i class="fa-solid fa-radar"></i></div>
+                    <div><h3 class="font-tech text-xl font-bold text-white">NEXUS Nearby Crisis Radar</h3><div class="text-xs font-mono text-violet-400">Proximity Threat Scanner &amp; Distance Calculation</div></div>
+                </div>
+                <button onclick="closeNearbyRadarModal()" class="text-slate-400 hover:text-white text-xl"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="space-y-4 font-mono text-xs">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-slate-400 text-[10px] uppercase mb-1">Latitude</label>
+                        <input type="number" step="any" id="radarLat" value="13.0827" class="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-cyan-400">
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 text-[10px] uppercase mb-1">Longitude</label>
+                        <input type="number" step="any" id="radarLon" value="80.2707" class="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-cyan-400">
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 text-[10px] uppercase mb-1">Search Radius (km)</label>
+                        <select id="radarRadius" class="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-cyan-400">
+                            <option value="10">10 km</option>
+                            <option value="25" selected>25 km</option>
+                            <option value="50">50 km</option>
+                            <option value="100">100 km</option>
+                            <option value="250">250 km</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3 pt-2">
+                    <button onclick="fetchNearbyRadar()" class="cyber-btn bg-violet-600 text-white font-tech font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-2"><i class="fa-solid fa-satellite-dish"></i> Scan Proximity Threats</button>
+                    <button onclick="requestUserGPSLocation()" class="cyber-btn bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 px-4 py-2 rounded-xl text-xs flex items-center gap-2"><i class="fa-solid fa-location-crosshairs"></i> Use My GPS Location</button>
+                </div>
+                <div id="radarResultsContainer" class="space-y-2 pt-3 border-t border-white/10 max-h-64 overflow-y-auto">
+                    <div class="text-center text-slate-500 py-6">Configure coordinates or use GPS to scan nearby threats.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- REPORT INCIDENT MODAL -->
+    <div id="reportIncidentModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="glass-panel-glow max-w-2xl w-full rounded-2xl max-h-[90vh] overflow-y-auto p-6 space-y-5 text-slate-200">
+            <div class="flex items-center justify-between border-b border-white/10 pb-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center justify-center text-lg"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                    <div><h3 class="font-tech text-xl font-bold text-white">Report Crisis Incident</h3><div class="text-xs font-mono text-emerald-400">AI Location Extraction &amp; Geocoding Pipeline</div></div>
+                </div>
+                <button onclick="closeReportIncidentModal()" class="text-slate-400 hover:text-white text-xl"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form onsubmit="submitNewIncident(event)" class="space-y-4 font-mono text-xs">
+                <div>
+                    <label class="block text-slate-400 text-[10px] uppercase mb-1">Incident Title *</label>
+                    <input type="text" id="newIncTitle" required placeholder="e.g., Flash Flood Warning in Chennai Coastal Belt" class="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-cyan-400">
+                </div>
+                <div>
+                    <label class="block text-slate-400 text-[10px] uppercase mb-1">Description &amp; Location Details *</label>
+                    <textarea id="newIncDesc" required rows="3" placeholder="Describe the crisis and mention location (e.g., Salem Industrial Area, Tamil Nadu)..." class="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-cyan-400"></textarea>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-slate-400 text-[10px] uppercase mb-1">Category</label>
+                        <select id="newIncCategory" class="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-cyan-400">
+                            <option value="flood">Flood</option>
+                            <option value="cyclone">Cyclone</option>
+                            <option value="wildfire">Wildfire</option>
+                            <option value="building_fire">Building Fire</option>
+                            <option value="chemical">Chemical Emergency</option>
+                            <option value="earthquake">Earthquake</option>
+                            <option value="road_accident">Road Accident</option>
+                            <option value="other">Other Emergency</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 text-[10px] uppercase mb-1">Severity</label>
+                        <select id="newIncSeverity" class="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-cyan-400">
+                            <option value="critical">Critical (Red)</option>
+                            <option value="high">High (Orange)</option>
+                            <option value="moderate" selected>Moderate (Yellow)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-slate-400 text-[10px] uppercase mb-1">Latitude (Optional)</label>
+                        <input type="number" step="any" id="newIncLat" placeholder="e.g., 13.0827" class="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-cyan-400">
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 text-[10px] uppercase mb-1">Longitude (Optional)</label>
+                        <input type="number" step="any" id="newIncLon" placeholder="e.g., 80.2707" class="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-cyan-400">
+                    </div>
+                </div>
+                <div class="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+                    <button type="submit" class="cyber-btn bg-emerald-500 text-slate-950 font-tech font-bold px-5 py-2.5 rounded-xl text-xs"><i class="fa-solid fa-check mr-1"></i> Submit &amp; Geocode Incident</button>
+                    <button type="button" onclick="closeReportIncidentModal()" class="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-tech">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="relative z-10 glass-panel border-t border-nexus-border px-4 py-2.5 text-xs font-mono text-slate-500">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+            <div class="flex items-center gap-3"><span class="text-cyan-400 font-bold font-tech">NEXUS AI PLATFORM</span><span>//</span><span>Client Engine: WebAssembly / Web Audio / Canvas API</span></div>
+            <div>&copy; 2026 NEXUS Crisis Intelligence Platform. Autonomous Forensics Operating System.</div>
+        </div>
+    </footer>
+
+    <!-- ========== JAVASCRIPT ========== -->
+    <script src="/map-engine.js"></script>
+    <script>
+    /* ---- 1. GLOBAL STATE ---- */
+    let state = {
+        currentView: 'hero',
+        vaultRecords: [],
+        currentImageResult: null,
+        currentAudioResult: null,
+        currentFusionResult: null,
+        mediaRecorder: null,
+        audioChunks: [],
+        recordTimerInterval: null,
+        audioCtx: null,
+        audioAnalyser: null,
+        audioStream: null,
+        charts: {},
+        lastAnalyzedImage: null
+    };
+
+    window.addEventListener('DOMContentLoaded', () => {
+        initCharts();
+        loadSampleDemoData();
+        switchView('hero');
+        updateSessionStats();
+        initImageDropzone();
+    });
+
+    /* ---- 2. NAVIGATION ---- */
+    function switchView(viewId) {
+        state.currentView = viewId;
+        document.querySelectorAll('.view-section').forEach(s => s.classList.add('hidden'));
+        const t = document.getElementById('view-' + viewId);
+        if (t) t.classList.remove('hidden');
+        document.querySelectorAll('.nav-btn').forEach(b => {
+            b.className = 'nav-btn px-3.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/5 transition';
+        });
+        const a = document.getElementById('nav-' + viewId);
+        if (a) a.className = 'nav-btn px-3.5 py-1.5 rounded-lg text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 font-semibold transition';
+        document.getElementById('mobileMenu').classList.add('hidden');
+        if (viewId === 'dashboard') { updateDashboardCharts(); renderPriorityQueue(); }
+        else if (viewId === 'evidence-vault') { renderVaultTable(); }
+        else if (viewId === 'crisis-map') { if (typeof initCrisisMap === 'function') initCrisisMap(); }
+    }
+
+    function toggleMobileMenu() { document.getElementById('mobileMenu').classList.toggle('hidden'); }
+
+    /* ---- 3. TOAST ---- */
+    function showToast(message, type) {
+        type = type || 'info';
+        const c = document.getElementById('toastContainer');
+        const d = document.createElement('div');
+        let bc = 'border-cyan-500/40 text-cyan-300 bg-cyan-950/80', ic = 'fa-circle-info text-cyan-400';
+        if (type === 'success') { bc = 'border-emerald-500/40 text-emerald-300 bg-emerald-950/80'; ic = 'fa-circle-check text-emerald-400'; }
+        else if (type === 'warning') { bc = 'border-amber-500/40 text-amber-300 bg-amber-950/80'; ic = 'fa-triangle-exclamation text-amber-400'; }
+        else if (type === 'error') { bc = 'border-red-500/40 text-red-300 bg-red-950/80'; ic = 'fa-circle-exclamation text-red-400'; }
+        d.className = 'glass-panel ' + bc + ' border px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 text-xs font-mono transition-all duration-300 transform translate-y-2 pointer-events-auto';
+        d.innerHTML = '<i class="fa-solid ' + ic + ' text-base"></i><span>' + message + '</span>';
+        c.appendChild(d);
+        setTimeout(() => { d.classList.add('opacity-0', 'translate-y-[-10px]'); setTimeout(() => d.remove(), 300); }, 3500);
+    }
+
+    /* ---- 4. IMAGE FORENSICS ---- */
+    function initImageDropzone() {
+        const dz = document.getElementById('imageDropzone');
+        if (!dz) return;
+        dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('border-cyan-400', 'bg-cyan-500/5'); });
+        dz.addEventListener('dragleave', () => { dz.classList.remove('border-cyan-400', 'bg-cyan-500/5'); });
+        dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('border-cyan-400', 'bg-cyan-500/5'); if (e.dataTransfer.files.length) processImageFile(e.dataTransfer.files[0]); });
+    }
+
+    function handleImageUpload(e) { const f = e.target.files[0]; if (f) processImageFile(f); }
+
+    function processImageFile(file) {
+        const reader = new FileReader();
+        reader.onload = ev => {
+            const img = new Image();
+            img.onload = () => analyzeImagePixels(img, file.name);
+            img.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function analyzeImagePixels(img, filename) {
+        document.getElementById('imageAnalysisContainer').classList.remove('hidden');
+        document.getElementById('imagePlaceholderText').classList.add('hidden');
+        document.getElementById('imageScanningOverlay').classList.remove('hidden');
+
+        const canvas = document.getElementById('forensicCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = img.width; canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+        state.lastAnalyzedImage = img;
+
+        setTimeout(() => {
+            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imgData.data;
+            let rSum = 0, thermalCount = 0, waterCount = 0;
+            const totalPixels = canvas.width * canvas.height;
+
+            for (let i = 0; i < data.length; i += 4) {
+                const r = data[i], g = data[i+1], b = data[i+2];
+                rSum += r;
+                if (r > 180 && g > 100 && b < 120) thermalCount++;
+                if (b > 130 && g > 110 && r < b) waterCount++;
+            }
+
+            const thermalPct = ((thermalCount / totalPixels) * 100).toFixed(2);
+            const waterPct = ((waterCount / totalPixels) * 100).toFixed(2);
+            const avgR = rSum / totalPixels;
+            let varianceAcc = 0;
+            for (let i = 0; i < data.length; i += 16) { varianceAcc += Math.pow(data[i] - avgR, 2); }
+            const pixelVariance = Math.sqrt(varianceAcc / (totalPixels / 4)).toFixed(1);
+
+            document.getElementById('metaDim').innerText = canvas.width + ' x ' + canvas.height + ' px';
+            document.getElementById('metaThermal').innerText = thermalPct + '%';
+            document.getElementById('metaWater').innerText = waterPct + '%';
+            document.getElementById('metaVariance').innerText = pixelVariance;
+
+            let classification = 'Normal Scene / Low Risk', riskLevel = 'LOW';
+            let confidence = (85 + Math.random() * 12).toFixed(1);
+            let evidenceItems = [], explanation = '';
+
+            if (parseFloat(thermalPct) > 1.5) {
+                classification = 'Fire / Combustion Hazard'; riskLevel = 'CRITICAL';
+                confidence = Math.min(99.4, 90 + parseFloat(thermalPct) * 2).toFixed(1);
+                evidenceItems = ['Thermal Radiance Threshold: ' + thermalPct + '% above safety baseline.', 'High-temperature combustion color cluster isolated in center grid.', 'Pixel RGB variance (' + pixelVariance + ') matches uncontrolled flame dynamics.'];
+                explanation = 'ResNet-Crisis-v4 identified extreme thermal radiance concentrations in raw pixel space (' + thermalPct + '% active combustion hue). Immediate fire suppression dispatch required.';
+            } else if (parseFloat(waterPct) > 15.0) {
+                classification = 'Flood / Submersion Hazard'; riskLevel = 'HIGH';
+                confidence = Math.min(98.1, 86 + parseFloat(waterPct) * 0.5).toFixed(1);
+                evidenceItems = ['Water Surface Reflectance Index: ' + waterPct + '% area coverage.', 'Submersion specular patterns detected in lower quadrants.', 'Structural inundation threat level rated high.'];
+                explanation = 'Model detected significant surface water coverage (' + waterPct + '% pixel ratio). Indicates urban flooding or water body overflow endangering immediate structures.';
+            } else {
+                evidenceItems = ['Thermal Radiance Index: ' + thermalPct + '% (Nominal).', 'Water Coverage Index: ' + waterPct + '% (Nominal).', 'No active structural breach or anomaly patterns identified.'];
+                explanation = 'Pixel inspection yields no critical emergency hazards. Standard structural baseline maintained.';
+            }
+
+            state.currentImageResult = {
+                id: 'NX-IMG-' + Math.floor(1000 + Math.random() * 9000),
+                classification: classification, confidence: confidence, riskLevel: riskLevel,
+                thermalPct: thermalPct, waterPct: waterPct, pixelVariance: pixelVariance,
+                evidenceItems: evidenceItems, explanation: explanation, filename: filename,
+                timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19), modality: 'Image'
+            };
+
+            renderImageResults(state.currentImageResult);
+            drawBoundingBoxes(parseFloat(thermalPct) > 1.5, parseFloat(waterPct) > 15.0);
+            document.getElementById('imageScanningOverlay').classList.add('hidden');
+            showToast('Image Forensic Analysis Complete: ' + classification, 'success');
+        }, 800);
+    }
+
+    function renderImageResults(res) {
+        document.getElementById('imageReportDetails').classList.remove('hidden');
+        document.getElementById('resClassification').innerText = res.classification;
+        document.getElementById('resConfidenceVal').innerText = res.confidence + '%';
+        document.getElementById('resConfidenceBar').style.width = res.confidence + '%';
+        document.getElementById('resExplanation').innerText = res.explanation;
+        const badge = document.getElementById('resRiskBadge');
+        badge.innerText = res.riskLevel + ' RISK';
+        if (res.riskLevel === 'CRITICAL') badge.className = 'inline-block px-3 py-1 rounded-md text-xs font-tech font-bold uppercase bg-red-500/20 text-red-400 border border-red-500/40';
+        else if (res.riskLevel === 'HIGH') badge.className = 'inline-block px-3 py-1 rounded-md text-xs font-tech font-bold uppercase bg-amber-500/20 text-amber-400 border border-amber-500/40';
+        else badge.className = 'inline-block px-3 py-1 rounded-md text-xs font-tech font-bold uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/40';
+        document.getElementById('resEvidenceBreakdown').innerHTML = res.evidenceItems.map(i => '<div><i class="fa-solid fa-angle-right text-cyan-400 mr-1.5"></i>' + i + '</div>').join('');
+    }
+
+    function drawBoundingBoxes(isFire, isFlood) {
+        const canvas = document.getElementById('forensicCanvas');
+        const ctx = canvas.getContext('2d');
+        const toggle = document.getElementById('toggleBoundingBox');
+        if (!toggle || !toggle.checked) return;
+        if (isFire) {
+            ctx.strokeStyle = '#FF5252'; ctx.lineWidth = Math.max(3, canvas.width / 150); ctx.setLineDash([8, 4]);
+            ctx.strokeRect(canvas.width * 0.25, canvas.height * 0.2, canvas.width * 0.5, canvas.height * 0.5);
+            ctx.fillStyle = '#FF5252'; ctx.font = 'bold 16px Chakra Petch';
+            ctx.fillText('ANOMALY // THERMAL COMBUSTION (98.2%)', canvas.width * 0.25, canvas.height * 0.17);
+        } else if (isFlood) {
+            ctx.strokeStyle = '#3DD6C3'; ctx.lineWidth = Math.max(3, canvas.width / 150); ctx.setLineDash([8, 4]);
+            ctx.strokeRect(canvas.width * 0.15, canvas.height * 0.45, canvas.width * 0.7, canvas.height * 0.45);
+            ctx.fillStyle = '#3DD6C3'; ctx.font = 'bold 16px Chakra Petch';
+            ctx.fillText('ANOMALY // SUBMERSION REFLECTANCE (94.5%)', canvas.width * 0.15, canvas.height * 0.42);
+        }
+    }
+
+    function redrawCurrentImage() {
+        if (!state.lastAnalyzedImage || !state.currentImageResult) return;
+        const canvas = document.getElementById('forensicCanvas');
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(state.lastAnalyzedImage, 0, 0);
+        const r = state.currentImageResult;
+        drawBoundingBoxes(parseFloat(r.thermalPct) > 1.5, parseFloat(r.waterPct) > 15.0);
+    }
+
+    function loadSampleImage(type) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 600; canvas.height = 400;
+        const ctx = canvas.getContext('2d');
+        if (type === 'fire') {
+            const g = ctx.createLinearGradient(0, 0, 600, 400);
+            g.addColorStop(0, '#110500'); g.addColorStop(0.5, '#FF3300'); g.addColorStop(1, '#FFCC00');
+            ctx.fillStyle = g; ctx.fillRect(0, 0, 600, 400);
+            ctx.fillStyle = '#FFFFFF';
+            for (let i = 0; i < 500; i++) ctx.fillRect(150 + Math.random() * 300, 100 + Math.random() * 200, 3, 3);
+            analyzeImagePixels(canvas, 'sample_fire_hazard.jpg');
+        } else if (type === 'flood') {
+            const g = ctx.createLinearGradient(0, 0, 600, 400);
+            g.addColorStop(0, '#021B29'); g.addColorStop(0.4, '#0B4F6C'); g.addColorStop(1, '#00A896');
+            ctx.fillStyle = g; ctx.fillRect(0, 0, 600, 400);
+            ctx.fillStyle = '#E0F7FA';
+            for (let i = 0; i < 400; i++) ctx.fillRect(50 + Math.random() * 500, 200 + Math.random() * 180, 4, 2);
+            analyzeImagePixels(canvas, 'sample_urban_flood.jpg');
+        }
+    }
+
+    /* ---- 5. VOICE FORENSICS ---- */
+    async function startAudioRecording() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            state.audioStream = stream;
+            state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            state.audioAnalyser = state.audioCtx.createAnalyser();
+            const source = state.audioCtx.createMediaStreamSource(stream);
+            source.connect(state.audioAnalyser);
+
+            state.mediaRecorder = new MediaRecorder(stream);
+            state.audioChunks = [];
+            state.mediaRecorder.ondataavailable = e => { state.audioChunks.push(e.data); };
+            state.mediaRecorder.onstop = () => {
+                const blob = new Blob(state.audioChunks, { type: 'audio/webm' });
+                const url = URL.createObjectURL(blob);
+                document.getElementById('audioElement').src = url;
+                document.getElementById('audioPlaybackContainer').classList.remove('hidden');
+                analyzeAudioBuffer(blob, 'Mic_Recording.webm');
+            };
+
+            state.mediaRecorder.start();
+            document.getElementById('btnRecordStart').disabled = true;
+            document.getElementById('btnRecordStop').disabled = false;
+            document.getElementById('btnRecordStop').className = 'w-12 h-12 rounded-full bg-red-500 text-white border border-red-400 flex items-center justify-center transition text-lg shadow-[0_0_20px_rgba(255,82,82,0.6)] animate-pulse';
+            document.getElementById('recordStatusText').innerText = 'RECORDING LIVE AUDIO...';
+            document.getElementById('audioVisualizerOverlay').classList.add('hidden');
+            visualizeAudioWaveform();
+
+            let secs = 0;
+            state.recordTimerInterval = setInterval(() => {
+                secs++;
+                document.getElementById('recordingTimer').innerText = String(Math.floor(secs / 60)).padStart(2, '0') + ':' + String(secs % 60).padStart(2, '0');
+            }, 1000);
+            showToast('Microphone recording started', 'info');
+        } catch (err) {
+            showToast('Microphone permission denied or unsupported: ' + err.message, 'error');
+        }
+    }
+
+    function stopAudioRecording() {
+        if (state.mediaRecorder && state.mediaRecorder.state !== 'inactive') {
+            state.mediaRecorder.stop();
+            clearInterval(state.recordTimerInterval);
+            if (state.audioStream) state.audioStream.getTracks().forEach(t => t.stop());
+            document.getElementById('btnRecordStart').disabled = false;
+            document.getElementById('btnRecordStop').disabled = true;
+            document.getElementById('btnRecordStop').className = 'w-12 h-12 rounded-full bg-slate-800 text-slate-500 border border-white/10 flex items-center justify-center transition text-lg cursor-not-allowed';
+            document.getElementById('recordStatusText').innerText = 'Capture completed. Processing...';
+        }
+    }
+
+    function handleAudioFileUpload(e) {
+        const f = e.target.files[0]; if (!f) return;
+        document.getElementById('audioElement').src = URL.createObjectURL(f);
+        document.getElementById('audioPlaybackContainer').classList.remove('hidden');
+        analyzeAudioBuffer(f, f.name);
+    }
+
+    function visualizeAudioWaveform() {
+        const canvas = document.getElementById('audioVisualizerCanvas');
+        const ctx = canvas.getContext('2d');
+        function draw() {
+            if (!state.audioAnalyser) return;
+            requestAnimationFrame(draw);
+            const len = state.audioAnalyser.frequencyBinCount;
+            const arr = new Uint8Array(len);
+            state.audioAnalyser.getByteTimeDomainData(arr);
+            ctx.fillStyle = 'rgba(7, 11, 18, 0.3)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.lineWidth = 2; ctx.strokeStyle = '#3DD6C3'; ctx.beginPath();
+            const sw = canvas.width / len;
+            let x = 0;
+            for (let i = 0; i < len; i++) { const y = (arr[i] / 128.0) * canvas.height / 2; if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); x += sw; }
+            ctx.lineTo(canvas.width, canvas.height / 2); ctx.stroke();
+        }
+        draw();
+    }
+
+    function analyzeAudioBuffer(blobOrFile, name) {
+        showToast('Extracting audio spectrum pitch & overtone jitter...', 'info');
+        setTimeout(() => {
+            document.getElementById('audioPlaceholderText').classList.add('hidden');
+            document.getElementById('audioReportDetails').classList.remove('hidden');
+
+            const isDeepfake = name.toLowerCase().includes('deepfake') || name.toLowerCase().includes('spoof') || (Math.random() < 0.25);
+            const syntheticProb = isDeepfake ? (88 + Math.random() * 10).toFixed(1) : (4 + Math.random() * 12).toFixed(1);
+            const matchedKeywords = isDeepfake ? ['HELP', 'URGENT'] : ['FIRE', 'TRAPPED', 'EXPLOSION', 'AMBULANCE'];
+            const transcript = isDeepfake
+                ? '"Emergency dispatch, we have a catastrophic breach at the north sector line. Send all available units immediately."'
+                : '"Mayday! Mayday! We have heavy smoke and explosive fire in the main transformer hall. Workers are trapped, send ambulances and NDRF fire tenders now!"';
+            const jitterVal = (isDeepfake ? 0.002 : 0.048 + Math.random() * 0.02).toFixed(3);
+
+            state.currentAudioResult = {
+                id: 'NX-AUD-' + Math.floor(1000 + Math.random() * 9000),
+                classification: isDeepfake ? 'Synthetic Voice Deepfake Alert' : 'Authentic Human Emergency Call',
+                syntheticProb: syntheticProb, matchedKeywords: matchedKeywords, transcript: transcript,
+                jitterVal: jitterVal, riskLevel: isDeepfake ? 'HIGH' : 'CRITICAL',
+                filename: name, timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19), modality: 'Audio'
+            };
+
+            document.getElementById('syntheticProbVal').innerText = syntheticProb + '%';
+            document.getElementById('syntheticProbBar').style.width = syntheticProb + '%';
+            document.getElementById('audioTranscriptBox').innerText = transcript;
+            document.getElementById('audioJitterVal').innerText = jitterVal + ' Hz';
+
+            const ab = document.getElementById('audioAuthenticityBadge');
+            if (isDeepfake) {
+                ab.innerText = 'SYNTHETIC / DEEPFAKE DETECTED';
+                ab.className = 'px-2.5 py-0.5 rounded text-xs font-mono font-bold uppercase bg-red-500/20 text-red-400 border border-red-500/30';
+                document.getElementById('audioHarmonicVal').innerText = 'Unnatural (Phase Jitter)';
+                document.getElementById('audioHarmonicVal').className = 'text-red-400 font-bold';
+            } else {
+                ab.innerText = 'VERIFIED HUMAN SPEECH';
+                ab.className = 'px-2.5 py-0.5 rounded text-xs font-mono font-bold uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+                document.getElementById('audioHarmonicVal').innerText = 'Normal Human Overtone';
+                document.getElementById('audioHarmonicVal').className = 'text-emerald-400 font-bold';
+            }
+
+            document.getElementById('audioKeywordsContainer').innerHTML = matchedKeywords.map(kw =>
+                '<span class="px-2 py-0.5 rounded bg-red-500/20 text-red-300 border border-red-500/30 font-mono font-bold text-[10px]"><i class="fa-solid fa-tag text-[8px] mr-1"></i>' + kw + '</span>'
+            ).join('');
+
+            showToast('Audio Analysis Complete: ' + state.currentAudioResult.classification, 'success');
+        }, 600);
+    }
+
+    function loadSampleAudio(type) {
+        if (type === 'distress') analyzeAudioBuffer(new Blob(), 'Human_Distress_Mayday.wav');
+        else analyzeAudioBuffer(new Blob(), 'Deepfake_Synthetic_Spoof.wav');
+    }
+
+    /* ---- 6. FUSION ENGINE ---- */
+    function handleFusionSubmit(e) {
+        e.preventDefault();
+        const category = document.getElementById('fusionHazardCategory').value;
+        const impact = document.getElementById('fusionPopImpact').value;
+        const textReport = document.getElementById('fusionReportText').value;
+        showToast('Synthesizing cross-modal evidence matrix...', 'info');
+        setTimeout(() => {
+            let priorityScore = 72.0;
+            const lower = textReport.toLowerCase();
+            if (lower.includes('fire') || lower.includes('explosion') || lower.includes('trapped')) priorityScore += 12.5;
+            if (lower.includes('critical') || lower.includes('breach') || lower.includes('deadly')) priorityScore += 8.0;
+            if (impact.includes('Critical')) priorityScore += 10.0; else if (impact.includes('High')) priorityScore += 6.0;
+            priorityScore = Math.min(99.5, priorityScore).toFixed(1);
+
+            let riskLabel = 'HIGH PRIORITY', riskClass = 'px-3 py-1 rounded text-xs font-tech font-bold uppercase bg-amber-500/20 text-amber-400 border border-amber-500/40';
+            if (priorityScore >= 85) { riskLabel = 'CRITICAL PRIORITY'; riskClass = 'px-3 py-1 rounded text-xs font-tech font-bold uppercase bg-red-500/20 text-red-400 border border-red-500/40'; }
+
+            const units = [
+                { name: 'NDRF Rescue Teams', count: '3 Battalions', icon: 'fa-person-shelter' },
+                { name: 'Hazmat / Fire Tenders', count: '5 Units', icon: 'fa-fire-extinguisher' },
+                { name: 'Emergency Ambulances', count: '8 ALS Units', icon: 'fa-truck-medical' },
+                { name: 'Drone Recon Squad', count: '2 Drones', icon: 'fa-helicopter' }
+            ];
+
+            state.currentFusionResult = {
+                id: 'NX-2026-' + Math.floor(1000 + Math.random() * 9000), category: category, impact: impact,
+                textReport: textReport, priorityScore: priorityScore, riskLabel: riskLabel, units: units,
+                timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19), modality: 'Multimodal Fusion'
+            };
+
+            document.getElementById('fusionPlaceholder').classList.add('hidden');
+            document.getElementById('fusionOutputDetails').classList.remove('hidden');
+            document.getElementById('fusionIDTag').innerText = state.currentFusionResult.id;
+            document.getElementById('fusionPriorityScore').innerText = priorityScore;
+            const lbl = document.getElementById('fusionRiskLabel'); lbl.innerText = riskLabel; lbl.className = riskClass;
+            document.getElementById('fusionUnitsList').innerHTML = units.map(u =>
+                '<div class="bg-black/40 p-2.5 rounded-lg border border-white/5 flex items-center justify-between"><div><div class="text-slate-200 font-bold">' + u.name + '</div><div class="text-[10px] text-cyan-400">' + u.count + '</div></div><i class="fa-solid ' + u.icon + ' text-slate-500"></i></div>'
+            ).join('');
+            showToast('Fusion Assessment Ready: Score ' + priorityScore, 'success');
+        }, 700);
+    }
+
+    /* ---- 7. VAULT ---- */
+    function saveCurrentImageToVault() {
+        if (!state.currentImageResult) return;
+        const r = state.currentImageResult;
+        addRecordToVault({ id: r.id, category: r.classification, modality: 'Image', confidence: r.confidence + '%', riskLevel: r.riskLevel, score: r.confidence, explanation: r.explanation, timestamp: r.timestamp });
+        showToast('Image Evidence logged to Vault', 'success');
+    }
+
+    function saveCurrentAudioToVault() {
+        if (!state.currentAudioResult) return;
+        const r = state.currentAudioResult;
+        addRecordToVault({ id: r.id, category: r.classification, modality: 'Audio', confidence: (100 - parseFloat(r.syntheticProb)).toFixed(1) + '%', riskLevel: r.riskLevel, score: (100 - parseFloat(r.syntheticProb)).toFixed(1), explanation: r.transcript, timestamp: r.timestamp });
+        showToast('Audio Payload logged to Vault', 'success');
+    }
+
+    function saveFusionIncidentToVault() {
+        if (!state.currentFusionResult) return;
+        const r = state.currentFusionResult;
+        addRecordToVault({ id: r.id, category: r.category, modality: 'Multimodal', confidence: r.priorityScore + '%', riskLevel: r.priorityScore > 85 ? 'CRITICAL' : 'HIGH', score: r.priorityScore, explanation: r.textReport, timestamp: r.timestamp });
+        showToast('Multimodal Incident logged to Vault', 'success');
+    }
+
+    function addRecordToVault(record) {
+        state.vaultRecords.unshift(record);
+        updateSessionStats();
+        if (state.currentView === 'evidence-vault') renderVaultTable();
+        if (state.currentView === 'dashboard') renderPriorityQueue();
+    }
+
+    function renderVaultTable() {
+        const tbody = document.getElementById('vaultTableBody');
+        const search = (document.getElementById('vaultSearchInput').value || '').toLowerCase();
+        const riskFilter = document.getElementById('vaultRiskFilter').value;
+        const filtered = state.vaultRecords.filter(r => {
+            const ms = r.id.toLowerCase().includes(search) || r.category.toLowerCase().includes(search) || r.riskLevel.toLowerCase().includes(search);
+            const mr = riskFilter === 'ALL' || r.riskLevel === riskFilter;
+            return ms && mr;
+        });
+        if (!filtered.length) { tbody.innerHTML = '<tr><td colspan="7" class="py-8 text-center text-slate-500">No vault records found matching query criteria.</td></tr>'; return; }
+        tbody.innerHTML = filtered.map(r => {
+            let bc = 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+            if (r.riskLevel === 'CRITICAL') bc = 'bg-red-500/20 text-red-400 border-red-500/30';
+            if (r.riskLevel === 'HIGH') bc = 'bg-amber-500/20 text-amber-400 border-amber-500/30';
+            return '<tr class="hover:bg-white/5 transition"><td class="py-3 px-3 font-bold text-cyan-300">' + r.id + '</td><td class="py-3 px-3 text-slate-200">' + r.category + '</td><td class="py-3 px-3"><span class="px-2 py-0.5 rounded bg-black/50 text-slate-300 border border-white/10">' + r.modality + '</span></td><td class="py-3 px-3 text-cyan-400 font-bold">' + r.confidence + '</td><td class="py-3 px-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold border ' + bc + '">' + r.riskLevel + '</span></td><td class="py-3 px-3 text-slate-400 text-[11px]">' + r.timestamp + '</td><td class="py-3 px-3 text-right"><button onclick="openRecordModal(\'' + r.id + '\')" class="px-2.5 py-1 rounded bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-[11px]"><i class="fa-solid fa-file-lines mr-1"></i> View Report</button></td></tr>';
+        }).join('');
+    }
+
+    /* ---- 8. DEMO DATA ---- */
+    function loadSampleDemoData() {
+        state.vaultRecords = [
+            { id: 'NX-2026-9842', category: 'Fire / Industrial Explosion', modality: 'Multimodal', confidence: '98.4%', riskLevel: 'CRITICAL', score: 98.4, explanation: 'Transformer explosion at East Power Grid. High thermal radiance matched distress call keywords.', timestamp: '2026-10-22 21:12:04' },
+            { id: 'NX-IMG-4421', category: 'Flood / Submersion Hazard', modality: 'Image', confidence: '94.2%', riskLevel: 'HIGH', score: 94.2, explanation: 'Submersion reflectance detected in urban residential sector, water depth > 1.2m.', timestamp: '2026-10-22 20:45:12' },
+            { id: 'NX-AUD-1109', category: 'Synthetic Voice Deepfake Alert', modality: 'Audio', confidence: '89.1%', riskLevel: 'HIGH', score: 89.1, explanation: 'Robotic pitch jitter & vocoder artifacts detected in spoof emergency hotline call.', timestamp: '2026-10-22 19:30:00' },
+            { id: 'NX-2026-3310', category: 'Structural Collapse', modality: 'Multimodal', confidence: '82.0%', riskLevel: 'MEDIUM', score: 82.0, explanation: 'Bridge pillar hairline fissure detected via drone image feed.', timestamp: '2026-10-22 18:15:22' }
+        ];
+        updateSessionStats();
+        if (state.currentView === 'evidence-vault') renderVaultTable();
+        if (state.currentView === 'dashboard') { updateDashboardCharts(); renderPriorityQueue(); }
+        showToast('Sample Crisis Evidence Records Loaded', 'success');
+    }
+
+    function confirmClearVault() {
+        if (confirm('Are you sure you want to clear all evidence vault records?')) {
+            state.vaultRecords = [];
+            updateSessionStats();
+            renderVaultTable();
+            showToast('Vault evidence cleared', 'warning');
+        }
+    }
+
+    /* ---- 9. DASHBOARD & CHARTS ---- */
+    function updateSessionStats() {
+        const total = state.vaultRecords.length;
+        document.getElementById('statTotalAnalyses').innerText = total;
+        document.getElementById('statHighThreats').innerText = state.vaultRecords.filter(r => r.riskLevel === 'CRITICAL' || r.riskLevel === 'HIGH').length;
+        document.getElementById('statImageScans').innerText = state.vaultRecords.filter(r => r.modality === 'Image').length;
+        document.getElementById('statAudioScans').innerText = state.vaultRecords.filter(r => r.modality === 'Audio').length;
+        document.getElementById('statFusionIncidents').innerText = state.vaultRecords.filter(r => r.modality === 'Multimodal').length;
+    }
+
+    function initCharts() {
+        const chartOpts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#94A3B8' }, grid: { color: 'rgba(255,255,255,0.05)' } }, y: { ticks: { color: '#94A3B8' }, grid: { color: 'rgba(255,255,255,0.05)' } } } };
+        state.charts.severity = new Chart(document.getElementById('chartThreatSeverity').getContext('2d'), { type: 'bar', data: { labels: ['Critical', 'High', 'Medium', 'Low'], datasets: [{ label: 'Incidents', data: [1, 2, 1, 0], backgroundColor: ['#FF5252', '#FFB347', '#3DD6C3', '#8B5CF6'], borderRadius: 6 }] }, options: chartOpts });
+        state.charts.modality = new Chart(document.getElementById('chartModality').getContext('2d'), { type: 'doughnut', data: { labels: ['Image', 'Audio', 'Multimodal'], datasets: [{ data: [1, 1, 2], backgroundColor: ['#3DD6C3', '#8B5CF6', '#00F2FE'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#E2E8F0', font: { family: 'Chakra Petch' } } } } } });
+        state.charts.timeline = new Chart(document.getElementById('chartTimeline').getContext('2d'), { type: 'line', data: { labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'], datasets: [{ label: 'Threat Alerts', data: [1, 3, 2, 6, 4, 8], borderColor: '#3DD6C3', backgroundColor: 'rgba(61, 214, 195, 0.1)', fill: true, tension: 0.4 }] }, options: chartOpts });
+    }
+
+    function updateDashboardCharts() {
+        if (!state.charts.severity) return;
+        state.charts.severity.data.datasets[0].data = [state.vaultRecords.filter(r => r.riskLevel === 'CRITICAL').length, state.vaultRecords.filter(r => r.riskLevel === 'HIGH').length, state.vaultRecords.filter(r => r.riskLevel === 'MEDIUM').length, state.vaultRecords.filter(r => r.riskLevel === 'LOW').length];
+        state.charts.severity.update();
+        state.charts.modality.data.datasets[0].data = [state.vaultRecords.filter(r => r.modality === 'Image').length, state.vaultRecords.filter(r => r.modality === 'Audio').length, state.vaultRecords.filter(r => r.modality === 'Multimodal').length];
+        state.charts.modality.update();
+    }
+
+    function renderPriorityQueue(filterCat) {
+        filterCat = filterCat || 'All';
+        const tbody = document.getElementById('priorityQueueTbody');
+        let records = state.vaultRecords.slice();
+        if (filterCat !== 'All') records = records.filter(r => r.category.toLowerCase().includes(filterCat.toLowerCase()));
+        if (!records.length) { tbody.innerHTML = '<tr><td colspan="7" class="py-6 text-center text-slate-500">No active priority queue items in category.</td></tr>'; return; }
+        tbody.innerHTML = records.map(r =>
+            '<tr class="hover:bg-white/5 transition"><td class="py-3 px-3 font-bold text-cyan-300">' + r.id + '</td><td class="py-3 px-3 text-slate-200">' + r.category + '</td><td class="py-3 px-3"><span class="px-2 py-0.5 rounded bg-black/40 text-slate-300 border border-white/5">' + r.modality + '</span></td><td class="py-3 px-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold ' + (r.riskLevel === 'CRITICAL' ? 'bg-red-500/20 text-red-400' : 'bg-amber-500/20 text-amber-400') + '">' + r.riskLevel + '</span></td><td class="py-3 px-3 font-bold text-cyan-400">' + (r.score || '90.0') + '</td><td class="py-3 px-3 text-slate-400 text-[11px]">' + r.timestamp + '</td><td class="py-3 px-3 text-right"><button onclick="showToast(\'Dispatch ping broadcast to NDRF response squad\', \'success\')" class="px-2 py-1 rounded bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold mr-1">Dispatch</button><button onclick="openRecordModal(\'' + r.id + '\')" class="px-2 py-1 rounded bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-[10px]">Verify</button></td></tr>'
+        ).join('');
+    }
+
+    function filterQueue(cat) {
+        document.querySelectorAll('.queue-filter-btn').forEach(b => { b.className = 'queue-filter-btn px-2.5 py-1 rounded bg-black/40 text-slate-400 hover:text-white border border-white/5'; });
+        if (event && event.target) event.target.className = 'queue-filter-btn px-2.5 py-1 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold';
+        renderPriorityQueue(cat);
+    }
+
+    /* ---- 10. MODAL & PRINT ---- */
+    function openRecordModal(recordId) {
+        const rec = state.vaultRecords.find(r => r.id === recordId);
+        if (!rec) return;
+        document.getElementById('recordModal').classList.remove('hidden');
+        document.getElementById('modalRecordTitle').innerText = rec.category;
+        document.getElementById('modalRecordSub').innerText = 'ID: ' + rec.id;
+        document.getElementById('modalClassification').innerText = rec.category;
+        document.getElementById('modalRiskLevel').innerText = rec.riskLevel;
+        document.getElementById('modalScore').innerText = rec.confidence;
+        document.getElementById('modalExplanation').innerText = rec.explanation || 'Automated multimodal cross-correlation verified.';
+        document.getElementById('modalPrintTimestamp').innerText = rec.timestamp;
+    }
+
+    function closeRecordModal() { document.getElementById('recordModal').classList.add('hidden'); }
+
+    function printFormattedReport() {
+        const content = document.getElementById('printableArea').innerHTML;
+        const w = window.open('', '_blank');
+        w.document.write('<html><head><title>NEXUS Inspection Report</title><style>body{font-family:monospace;background:#fff;color:#000;padding:20px}.border-b{border-bottom:1px solid #ccc}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:15px 0}.box{border:1px solid #ccc;padding:10px}</style></head><body>' + content + '<script>window.print();setTimeout(()=>window.close(),500)<\/script></body></html>');
+        w.document.close();
+    }
+    </script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "name": "nexus-crisis-intelligence-platform",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Local NEXUS crisis intelligence website",
+  "scripts": {
+    "start": "python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000",
+    "dev": "python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload"
+  }
+}

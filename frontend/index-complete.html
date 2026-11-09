@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#080b13" />
+  <meta name="description" content="NEXUS AI - Advanced Crisis Intelligence Platform with Voice Recording, Image Analysis, and Real-time Forensics." />
+  <title>NEXUS AI v4.2 — Crisis Intelligence Platform</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Rajdhani:wght@500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="ambient ambient-a" aria-hidden="true"></div>
+  <div class="ambient ambient-b" aria-hidden="true"></div>
+
+  <div class="site-frame">
+    <!-- HEADER/TOPBAR -->
+    <header class="topbar" id="top">
+      <a class="brand" href="#top" aria-label="NEXUS AI home">
+        <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M16 3 27 7v8c0 7-4.8 11.5-11 14C9.8 26.5 5 22 5 15V7l11-4Z" stroke="currentColor" stroke-width="1.6"/><path d="m11.5 16 3 3 6-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="27" cy="5" r="2.4" fill="currentColor"/></svg></span>
+        <span class="brand-copy"><span class="brand-line"><strong>NEXUS</strong><span class="version">AI v4.2</span></span><span class="brand-caption">CRISIS INTELLIGENCE PLATFORM</span></span>
+      </a>
+      <nav class="main-nav" aria-label="Main navigation">
+        <a href="#image-panel">Image Forensic</a>
+        <a href="#audio-panel">Voice Forensic</a>
+        <a href="#fusion-workspace">Fusion Engine</a>
+        <a href="#dashboard">Live Analytics</a>
+        <a href="#vault">Evidence Vault</a>
+      </nav>
+      <div class="topbar-actions">
+        <span class="node-status" id="system-status"><i class="status-dot"></i><span id="status-label">ONLINE</span></span>
+        <button class="button button-demo" id="demo-button" type="button" title="Load sample forensic cases">Demo Data</button>
+        <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch to light theme" title="Switch theme">◐</button>
+        <button class="menu-toggle" id="menu-toggle" type="button" aria-label="Open navigation menu" aria-expanded="false" aria-controls="site-menu"><span></span><span></span><span></span></button>
+      </div>
+      <nav class="site-menu" id="site-menu" hidden aria-label="Main navigation">
+        <a href="#image-panel">Image Forensic</a>
+        <a href="#audio-panel">Voice Forensic</a>
+        <a href="#fusion-workspace">Fusion Engine</a>
+        <a href="#dashboard">Live Analytics</a>
+        <a href="#vault">Evidence Vault</a>
+      </nav>
+    </header>
+
+    <main>
+      <!-- HERO SECTION -->
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-orbit orbit-one" aria-hidden="true"></div>
+        <div class="hero-orbit orbit-two" aria-hidden="true"></div>
+        <div class="hero-copy">
+          <div class="eyebrow"><span class="eyebrow-mark">✺</span> AUTONOMOUS CRISIS TRIAGE &amp; FORENSIC INTELLIGENCE</div>
+          <h1 id="hero-title">AI Vision &amp; Pixel Forensic Scanner</h1>
+          <p class="hero-description">Real-time pixel histogram computation, thermal radiance calculation, &amp; deepfake manipulation analysis. Drag &amp; drop evidence or use live voice recording for integrated multimodal crisis intelligence.</p>
+          <div class="hero-actions">
+            <button class="button button-primary" onclick="document.getElementById('image-panel').scrollIntoView({behavior:'smooth'})"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 10h14M10 3l7 7-7 7"/></svg>Scan Image Evidence</button>
+            <button class="button button-secondary" onclick="document.getElementById('audio-panel').scrollIntoView({behavior:'smooth'})">Record Voice</button>
+            <button class="button button-fusion" id="load-sample-fire" onclick="loadSampleFire()">Sample Fire</button>
+            <button class="button button-fusion" id="load-sample-flood" onclick="loadSampleFlood()">Sample Flood</button>
+          </div>
+          <p class="privacy-note"><span class="privacy-lock" aria-hidden="true">▣</span> ORIGINAL MEDIA IS NOT STORED · ANALYSIS RUNS LOCALLY · NO EXTERNAL UPLOADS REQUIRED</p>
+        </div>
+        <div class="hero-scanline" aria-hidden="true"></div>
+      </section>
+
+      <!-- IMAGE FORENSICS SECTION -->
+      <section class="investigation-section" id="image-panel" aria-labelledby="image-title">
+        <div class="section-heading">
+          <div>
+            <span class="section-kicker">VISION PAYLOAD</span>
+            <h2 id="image-title">Visual Evidence Inspection</h2>
+          </div>
+          <span class="engine-mark">VISION / 01</span>
+        </div>
+
+        <!-- Image Upload -->
+        <label class="drop-zone" id="image-drop-zone" for="image-input">
+          <span class="drop-icon">▧</span>
+          <strong>Drag &amp; Drop Image Evidence or Click to Browse</strong>
+          <span>Supports JPG, PNG, WEBP. Canvas reads raw pixel arrays directly.</span>
+          <input class="visually-hidden" id="image-input" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" />
+        </label>
+
+        <!-- Image Preview -->
+        <div class="selected-file" id="image-selected" hidden>
+          <img id="image-preview" alt="Selected image preview" />
+          <div class="selected-file-meta">
+            <strong id="image-file-name"></strong>
+            <span id="image-file-info"></span>
+          </div>
+          <button class="button button-quiet clear-button" id="image-clear" type="button">Clear</button>
+        </div>
+
+        <!-- Analysis Button -->
+        <div class="action-row">
+          <button class="button button-primary" id="image-analyze" type="button" disabled>Analyze Image</button>
+          <span class="inline-state" id="image-progress" role="status"></span>
+        </div>
+
+        <!-- Canvas Area for Vision Analysis -->
+        <div id="vision-canvas" style="margin-top: 20px;"></div>
+
+        <!-- Histogram Visualization -->
+        <div id="histogram-viewer" style="margin-top: 20px;"></div>
+
+        <!-- Analysis Results -->
+        <div class="analysis-result" id="image-result" aria-live="polite" hidden></div>
+      </section>
+
+      <!-- AUDIO FORENSICS SECTION -->
+      <section class="investigation-section" id="audio-panel" aria-labelledby="audio-title">
+        <div class="section-heading">
+          <div>
+            <span class="section-kicker">VOICE PAYLOAD</span>
+            <h2 id="audio-title">Audio Authenticity &amp; Transcription</h2>
+          </div>
+          <span class="engine-mark">AUDIO / 02</span>
+        </div>
+
+        <!-- Audio Upload -->
+        <label class="drop-zone audio-drop-zone" id="audio-drop-zone" for="audio-input">
+          <span class="drop-icon">≋</span>
+          <strong>Drop audio here or <u>browse files</u></strong>
+          <span>WAV · MP3 · M4A · AAC · OGG · FLAC · WEBM · up to 24 MB</span>
+          <input class="visually-hidden" id="audio-input" type="file" accept=".wav,.mp3,.m4a,.aac,.ogg,.flac,.webm,.mp4,audio/*" />
+        </label>
+
+        <!-- Microphone Recording Section -->
+        <div class="record-row">
+          <span class="record-indicator" id="record-indicator"></span>
+          <span id="record-status">🎤 Microphone is ready</span>
+          <button class="button button-quiet" id="record-start" type="button" onclick="startRecording()">START RECORDING</button>
+          <button class="button button-quiet" id="record-stop" type="button" disabled onclick="stopRecording()" style="display:none;">STOP RECORDING</button>
+          <span id="record-timer" style="margin-left: 10px; color: #22d5e9; font-family: IBM Plex Mono;">00:00</span>
+        </div>
+
+        <!-- Audio Preview -->
+        <div class="selected-file audio-selected" id="audio-selected" hidden>
+          <div class="selected-file-meta">
+            <strong id="audio-file-name"></strong>
+            <span id="audio-file-info"></span>
+          </div>
+          <audio id="audio-preview" controls style="width: 100%; margin: 10px 0;"></audio>
+          <button class="button button-quiet clear-button" id="audio-clear" type="button">Clear</button>
+        </div>
+
+        <!-- Analysis Button -->
+        <div class="action-row">
+          <button class="button button-secondary" id="audio-analyze" type="button" disabled>Analyze Audio</button>
+          <span class="inline-state" id="audio-progress" role="status"></span>
+        </div>
+
+        <!-- Analysis Results -->
+        <div class="analysis-result" id="audio-result" aria-live="polite" hidden></div>
+      </section>
+
+      <!-- FUSION ENGINE SECTION -->
+      <section class="fusion-workspace" id="fusion-workspace" aria-labelledby="fusion-title">
+        <div class="fusion-bar">
+          <div>
+            <span class="section-kicker">CROSS-MODAL REVIEW</span>
+            <h3 id="fusion-title">Fusion Engine</h3>
+            <p>Comparative analysis combining visual and audio intelligence. Generate combined risk assessment and verification checklist.</p>
+          </div>
+          <div class="fusion-controls">
+            <button class="button button-fusion" id="fusion-button" type="button" disabled onclick="runFusion()">GENERATE FUSION ANALYSIS</button>
+          </div>
+        </div>
+        <div id="fusion-result" class="fusion-result" hidden aria-live="polite"></div>
+      </section>
+
+      <!-- DASHBOARD SECTION -->
+      <section class="dashboard-section" id="dashboard" aria-labelledby="dashboard-title">
+        <div class="section-heading">
+          <div>
+            <span class="section-kicker">LIVE APPLICATION DATA</span>
+            <h2 id="dashboard-title">Command Dashboard</h2>
+          </div>
+          <button class="button button-quiet" id="refresh-dashboard" type="button" onclick="refreshDashboard()">Refresh</button>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+          <article class="stat-card">
+            <span>ANALYSES PERFORMED</span>
+            <strong id="stat-total">0</strong>
+            <small>Saved analysis attempts</small>
+          </article>
+          <article class="stat-card">
+            <span>IMAGES ANALYZED</span>
+            <strong id="stat-images">0</strong>
+            <small>Vision forensics completed</small>
+          </article>
+          <article class="stat-card">
+            <span>AUDIO FILES ANALYZED</span>
+            <strong id="stat-audio">0</strong>
+            <small>Voice forensics completed</small>
+          </article>
+          <article class="stat-card">
+            <span>PROCESSING ERRORS</span>
+            <strong id="stat-errors">0</strong>
+            <small>Failed analysis attempts</small>
+          </article>
+        </div>
+
+        <!-- Charts & Health -->
+        <div class="dashboard-grid">
+          <article class="dashboard-card chart-card">
+            <div class="card-heading">
+              <div>
+                <span class="section-kicker">7-DAY ACTIVITY</span>
+                <h3>Analysis Timeline</h3>
+              </div>
+              <span class="chart-caption">From local records</span>
+            </div>
+            <div class="chart-wrap" id="activity-chart">
+              <div class="empty-state">No analysis activity recorded yet.</div>
+            </div>
+          </article>
+
+          <article class="dashboard-card health-card">
+            <div class="card-heading">
+              <div>
+                <span class="section-kicker">BACKEND / SYSTEMS</span>
+                <h3>System Health</h3>
+              </div>
+              <button class="text-button" id="health-recheck" type="button" onclick="refreshHealth()">Recheck</button>
+            </div>
+            <div id="health-list" class="health-list">
+              <div class="health-row">
+                <span class="health-led is-up"></span>
+                <strong>Vision Analyzer</strong>
+                <span>READY</span>
+              </div>
+              <div class="health-row">
+                <span class="health-led is-up"></span>
+                <strong>Audio Processor</strong>
+                <span>READY</span>
+              </div>
+              <div class="health-row">
+                <span class="health-led is-up"></span>
+                <strong>Local Storage</strong>
+                <span>READY</span>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <!-- VAULT SECTION -->
+      <section class="vault-section" id="vault" aria-labelledby="vault-title">
+        <div class="section-heading">
+          <div>
+            <span class="section-kicker">LOCAL ANALYSIS RECORDS</span>
+            <h2 id="vault-title">Evidence Vault</h2>
+          </div>
+          <label class="search-box">
+            <span class="visually-hidden">Search records</span>
+            <input id="vault-search" type="search" placeholder="Search ID, type, filename…" />
+            <span>⌕</span>
+          </label>
+        </div>
+        <div class="detail-view" id="investigation-detail" hidden></div>
+        <div class="vault-list" id="investigation-list">
+          <div class="empty-state">No saved analyses yet. Upload an image or record audio to create a local record.</div>
+        </div>
+      </section>
+
+      <section class="disclaimer-strip">
+        <span>⚠</span>
+        <p><strong>Preliminary analysis only.</strong> AI model outputs and automated detections can be wrong. They do not replace emergency services or qualified forensic review. Contact local emergency services directly if someone may be in immediate danger.</p>
+      </section>
+    </main>
+
+    <footer class="site-footer" id="footer">
+      <strong>NEXUS AI<br />PLATFORM</strong>
+      <span class="footer-slash">//</span>
+      <span>Local Canvas Analysis · IndexedDB Storage · No External APIs Required</span>
+      <span class="copyright">Original media is not retained. All analysis runs locally in your browser.</span>
+    </footer>
+  </div>
+
+  <!-- Demo Dialog -->
+  <dialog class="demo-dialog" id="demo-dialog">
+    <div class="demo-dialog-head">
+      <div>
+        <span class="section-kicker">SIMULATION DATA</span>
+        <h2>Pre-loaded Forensic Cases</h2>
+      </div>
+      <button class="button button-quiet" id="demo-close" type="button" onclick="document.getElementById('demo-dialog').close()">Close</button>
+    </div>
+    <p>Load sample forensic cases to test the analysis pipeline. These are simulated datasets and are not saved to the vault.</p>
+    <div class="demo-columns" id="demo-cases">
+      <!-- Populated by JavaScript -->
+    </div>
+  </dialog>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <!-- Scripts -->
+  <script src="/vision-analyzer.js"></script>
+  <script src="/audio-processor.js"></script>
+  <script src="/local-storage.js"></script>
+  <script src="/forensic-app.js"></script>
+</body>
+</html>
