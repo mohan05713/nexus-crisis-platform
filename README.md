@@ -84,87 +84,55 @@ All website settings, visual tokens, and functional parameters are centrally con
 
 ---
 
-## Getting Started
+## Getting Started (Windows + VS Code)
+
+This repository is a **Python FastAPI application serving a plain HTML/CSS/JavaScript frontend**. It is not a Vite/React project, so `npm install` is not required.
 
 ### Prerequisites
-- Python 3.10+ (Python 3.11, 3.12, or 3.13 supported)
-- Modern web browser (Chrome, Edge, Firefox, or Safari)
+- Python 3.10 or newer (Python 3.11 or 3.12 recommended)
+- VS Code
+- A modern browser
 
-### 1. Installation
+### 1. Extract and open the project
+1. Extract the GitHub ZIP file.
+2. In VS Code, select **File → Open Folder** and choose the extracted `nexus-crisis-platform` folder.
+3. Open **Terminal → New Terminal**. Make sure the terminal is in the folder containing `backend`, `frontend`, and `requirements.txt`.
 
-Open a terminal in the project directory:
+### 2. Install dependencies (PowerShell)
 
-```powershell
-# Create virtual environment (if not already created)
-python -m venv .venv
-
-# Activate virtual environment
-# On Windows PowerShell:
-.\.venv\Scripts\Activate.ps1
-# On Linux/macOS:
-source .venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-```
-
-### 2. Run the Local Development Server
+Run these commands one by one:
 
 ```powershell
-# Start the FastAPI server with live reload:
-python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload
-
-# Or use npm script:
-npm run dev
+py -3 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-Open your browser to: **[http://127.0.0.1:8000](http://127.0.0.1:8000)**
+If the `py` command is not available, use `python` instead.
 
----
-
-## Optional: Configuring Real Hugging Face AI Models
-
-The application is fully operational locally without any external credentials. To enable real cloud AI models:
-
-1. Copy `.env.example` to `.env`:
-   ```powershell
-   cp .env.example .env
-   ```
-2. Set your Hugging Face User Access Token:
-   ```env
-   HF_TOKEN=hf_your_token_here
-   ```
-3. Set your custom deployed Inference Endpoint URLs:
-   ```env
-   HF_IMAGE_AI_ENDPOINT=https://your-endpoint.endpoints.huggingface.cloud
-   HF_IMAGE_CAPTION_ENDPOINT=https://your-endpoint.endpoints.huggingface.cloud
-   HF_AUDIO_DEEPFAKE_ENDPOINT=https://your-endpoint.endpoints.huggingface.cloud
-   HF_ASR_ENDPOINT=https://your-endpoint.endpoints.huggingface.cloud
-   HF_SUMMARY_MODEL=your-chat-or-instruct-model
-   ```
-4. Restart the server and click **Recheck** in the System Health dashboard card.
-
----
-
-## Running Verification Tests
-
-Run the full automated end-to-end test suite:
+### 3. Start NEXUS locally
 
 ```powershell
-.venv\Scripts\python.exe -c "
-from fastapi.testclient import TestClient
-from backend.main import app
-
-client = TestClient(app)
-assert client.get('/').status_code == 200
-assert client.get('/api/health').status_code == 200
-assert client.get('/api/dashboard').status_code == 200
-assert client.get('/api/investigations').status_code == 200
-print('All test checks passed successfully!')
-"
+.\.venv\Scripts\python.exe -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
----
+Open **http://127.0.0.1:8000** in your browser. Keep the VS Code terminal open while using the application. Press **Ctrl+C** in the terminal to stop the server.
+
+**Shortcut:** On Windows, double-click `run_local.bat` in the project folder. It creates the virtual environment if needed, installs the requirements, and starts the server.
+
+### 4. Verify the local application
+
+Open a second VS Code terminal (leave the server running in the first terminal), then run:
+
+```powershell
+.\.venv\Scripts\python.exe -c "from fastapi.testclient import TestClient; from backend.main import app; c=TestClient(app); checks=['/','/api/health','/api/dashboard','/api/investigations','/api/incidents?district=Tiruchirappalli','/api/incidents?district=Thanjavur']; results=[(p,c.get(p).status_code) for p in checks]; print(results); assert all(code==200 for _,code in results); assert len(c.get('/api/incidents?district=Tiruchirappalli').json())>=2; assert len(c.get('/api/incidents?district=Thanjavur').json())>=2; print('All NEXUS checks passed.')"
+```
+
+The map includes clearly marked **NEXUS DEMO — NOT LIVE** training markers for Tiruchirappalli and Thanjavur. They are simulated examples, not reports of actual emergencies. Real incident feeds are separate and depend on their source availability.
+
+### Optional: Configure Hugging Face AI
+
+The core application runs without Hugging Face credentials. To enable the cloud AI features, copy `.env.example` to `.env` and configure the token and deployed endpoint URLs there. Never commit `.env` or expose `HF_TOKEN` in frontend code.
 
 ## Privacy & Ethical Guardrails
 
