@@ -352,6 +352,138 @@ def init_db() -> None:
                     )
                 )
 
+    seed_tamil_nadu_demo_incidents()
+
+
+
+def seed_tamil_nadu_demo_incidents() -> None:
+    """Add clearly labelled, non-real demo markers for Trichy and Thanjavur."""
+    now = utc_now()
+    demo_rows = [
+        {
+            "id": "NX-DEMO-TRICHY-001",
+            "title": "DEMO ONLY — Heavy Rainfall Scenario",
+            "description": "Simulated training marker near Tiruchirappalli city centre. This is not a live weather alert or a report of an actual event.",
+            "category": "flood", "severity": "moderate", "severity_color": "#f59e0b",
+            "status": "demo", "verification_status": "demo", "ai_confidence": 0.0,
+            "country": "India", "country_code": "IN", "state": "Tamil Nadu",
+            "district": "Tiruchirappalli", "city": "Tiruchirappalli",
+            "locality": "Trichy City Centre", "formatted_address": "Tiruchirappalli, Tamil Nadu, India",
+            "latitude": 10.7905, "longitude": 78.7047,
+            "location_accuracy": "approximate", "location_source": "NEXUS demo coordinates",
+            "geocoding_status": "demo", "source": "NEXUS DEMO — NOT LIVE",
+            "source_url": None, "source_id": "NEXUS-DEMO-TRICHY-001",
+        },
+        {
+            "id": "NX-DEMO-TRICHY-002",
+            "title": "DEMO ONLY — Road Disruption Scenario",
+            "description": "Simulated traffic-disruption training marker near Srirangam, Tiruchirappalli. No real road closure is being reported.",
+            "category": "road_accident", "severity": "high", "severity_color": "#f97316",
+            "status": "demo", "verification_status": "demo", "ai_confidence": 0.0,
+            "country": "India", "country_code": "IN", "state": "Tamil Nadu",
+            "district": "Tiruchirappalli", "city": "Tiruchirappalli",
+            "locality": "Srirangam", "formatted_address": "Srirangam, Tiruchirappalli, Tamil Nadu, India",
+            "latitude": 10.8624, "longitude": 78.6947,
+            "location_accuracy": "approximate", "location_source": "NEXUS demo coordinates",
+            "geocoding_status": "demo", "source": "NEXUS DEMO — NOT LIVE",
+            "source_url": None, "source_id": "NEXUS-DEMO-TRICHY-002",
+        },
+        {
+            "id": "NX-DEMO-THANJAVUR-001",
+            "title": "DEMO ONLY — Localised Flooding Scenario",
+            "description": "Simulated flood-response training marker near Thanjavur city centre. This is not a live flood report.",
+            "category": "flood", "severity": "high", "severity_color": "#f97316",
+            "status": "demo", "verification_status": "demo", "ai_confidence": 0.0,
+            "country": "India", "country_code": "IN", "state": "Tamil Nadu",
+            "district": "Thanjavur", "city": "Thanjavur",
+            "locality": "Thanjavur City Centre", "formatted_address": "Thanjavur, Tamil Nadu, India",
+            "latitude": 10.7870, "longitude": 79.1378,
+            "location_accuracy": "approximate", "location_source": "NEXUS demo coordinates",
+            "geocoding_status": "demo", "source": "NEXUS DEMO — NOT LIVE",
+            "source_url": None, "source_id": "NEXUS-DEMO-THANJAVUR-001",
+        },
+        {
+            "id": "NX-DEMO-THANJAVUR-002",
+            "title": "DEMO ONLY — Emergency Response Exercise",
+            "description": "Simulated emergency-response exercise marker near Kumbakonam in Thanjavur district. No actual incident is being reported.",
+            "category": "building_fire", "severity": "moderate", "severity_color": "#f59e0b",
+            "status": "demo", "verification_status": "demo", "ai_confidence": 0.0,
+            "country": "India", "country_code": "IN", "state": "Tamil Nadu",
+            "district": "Thanjavur", "city": "Kumbakonam",
+            "locality": "Kumbakonam", "formatted_address": "Kumbakonam, Thanjavur, Tamil Nadu, India",
+            "latitude": 10.9602, "longitude": 79.3845,
+            "location_accuracy": "approximate", "location_source": "NEXUS demo coordinates",
+            "geocoding_status": "demo", "source": "NEXUS DEMO — NOT LIVE",
+            "source_url": None, "source_id": "NEXUS-DEMO-THANJAVUR-002",
+        },
+    ]
+    with connect() as db:
+        for inc in demo_rows:
+            db.execute(
+                """INSERT OR IGNORE INTO incidents
+                (id, investigation_id, title, description, category, severity, severity_color,
+                 status, verification_status, ai_confidence, ai_summary, country, country_code,
+                 state, district, city, locality, formatted_address, latitude, longitude,
+                 location_accuracy, location_source, geocoding_status, occurred_at, detected_at,
+                 last_updated_at, source, source_url, source_id, is_approximate, created_at, updated_at)
+                VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)""",
+                (
+                    inc["id"], inc["title"], inc["description"], inc["category"], inc["severity"],
+                    inc["severity_color"], inc["status"], inc["verification_status"], inc["ai_confidence"],
+                    inc["country"], inc["country_code"], inc["state"], inc["district"], inc["city"],
+                    inc["locality"], inc["formatted_address"], inc["latitude"], inc["longitude"],
+                    inc["location_accuracy"], inc["location_source"], inc["geocoding_status"],
+                    now, now, now, inc["source"], inc["source_url"], inc["source_id"], now, now,
+                ),
+            )
+
+
+def dashboard_data() -> dict[str, Any]:
+    """Return the totals, seven-day activity, and risk buckets used by the UI."""
+    today = datetime.now(timezone.utc).date()
+    start_date = (today - timedelta(days=6)).isoformat()
+    with connect() as db:
+        totals = {
+            "total": db.execute("SELECT COUNT(*) FROM investigations").fetchone()[0],
+            "images": db.execute("SELECT COUNT(*) FROM analyses WHERE modality = 'image'").fetchone()[0],
+            "audio": db.execute("SELECT COUNT(*) FROM analyses WHERE modality = 'audio'").fetchone()[0],
+            "errors": db.execute("SELECT COUNT(*) FROM analyses WHERE status = 'failed'").fetchone()[0],
+        }
+        rows = db.execute(
+            "SELECT substr(created_at, 1, 10) AS day, COUNT(*) AS count "
+            "FROM analyses WHERE substr(created_at, 1, 10) >= ? GROUP BY day",
+            (start_date,),
+        ).fetchall()
+        fusion_rows = db.execute("SELECT fusion_json FROM investigations WHERE fusion_json IS NOT NULL").fetchall()
+        analysis_rows = db.execute("SELECT result_json, status FROM analyses").fetchall()
+
+    counts_by_day = {row["day"]: row["count"] for row in rows}
+    activity = [
+        {"date": (today - timedelta(days=offset)).isoformat(),
+         "count": counts_by_day.get((today - timedelta(days=offset)).isoformat(), 0)}
+        for offset in range(6, -1, -1)
+    ]
+    risk_distribution = {"low": 0, "medium": 0, "high": 0, "unknown": 0}
+    for row in fusion_rows:
+        try:
+            level = str((json.loads(row["fusion_json"]) or {}).get("risk_level", "unknown")).lower()
+        except (TypeError, ValueError):
+            level = "unknown"
+        risk_distribution[level if level in {"low", "medium", "high"} else "unknown"] += 1
+    for row in analysis_rows:
+        try:
+            payload = json.loads(row["result_json"]) or {}
+            level = str(payload.get("risk_level") or payload.get("keyword_risk", {}).get("level") or "unknown").lower()
+        except (TypeError, ValueError, AttributeError):
+            level = "unknown"
+        risk_distribution[level if level in {"low", "medium", "high"} else "unknown"] += 1
+
+    return {
+        "totals": totals,
+        "activity": activity,
+        "risk_distribution": risk_distribution,
+        "risk_rule_note": "Risk buckets are rule-based indicators from saved analyses; they are not confirmation of a real-world emergency.",
+    }
 
 def create_or_update_investigation(investigation_id: str | None, location: str, notes: str) -> str:
     now = utc_now()
