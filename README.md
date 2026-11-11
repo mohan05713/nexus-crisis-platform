@@ -85,24 +85,22 @@ The repository currently contains a browser-based frontend and a Python **FastAP
 
 ## Screenshots
 
-Screenshots should show the actual running application, not concept art or generated mockups. The recommended captures for this project are:
+The following screenshots show the current NEXUS AI v4.2 interface.
 
-| Screen | Suggested capture |
-| --- | --- |
-| Command / landing view | Full desktop view showing NEXUS branding and module navigation |
-| Crisis Map | Map with incident markers and the incident information panel |
-| Image Forensics | Image upload and a completed or demo analysis result |
-| Voice Forensics | Audio upload/recording and transcript or analysis result |
-| Live Analytics | Dashboard metrics, charts, and source-health indicators |
-| Evidence Vault | Investigation list, search, and case details |
+### Homepage and forensic intelligence
 
-**Screenshot status:** The README is ready for the real application captures, but image files have not been added because the current Vercel project has SSO/deployment protection enabled. To avoid publishing broken image links or fabricated screenshots, no placeholder images are presented as real captures. Once the deployed site is accessible without the protection interstitial, add the screenshots under `docs/screenshots/` and embed them here.
+The landing page presents the NEXUS Crisis Intelligence Platform, the global crisis-map and forensic-analysis entry points, and the vision, audio, and multimodal analysis engine cards.
 
-Example Markdown for adding a verified capture:
+### Global Crisis Map and location intelligence
 
-```md
-![NEXUS Crisis Map](docs/screenshots/crisis-map.png)
-```
+The map workspace includes global location search, India state and district filters, hazard category and severity filters, marker/heatmap view controls, the incident inspector, and external data-feed health indicators.
+
+**Live application:** https://nexus-crisis-platform.vercel.app/
+
+**Backend API:** https://nexus-crisis-platform-api.onrender.com/
+
+> Screenshot files were supplied in this conversation. They are not yet stored in the GitHub repository, so this section describes the verified captures without embedding broken image paths. When the image assets are committed under `docs/screenshots/`, embed them here with standard Markdown image links.
+
 
 ## Architecture
 
